@@ -1,3 +1,4 @@
 [racegate]
+ap = true
 wifi_ssid = "racegate"
-wifi_psk = "racegate"
+wifi_password = "racegate"

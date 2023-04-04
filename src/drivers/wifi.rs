@@ -1,9 +1,8 @@
-// based on https://github.com/ivmarkov/rust-esp32-std-demo/blob/main/src/main.rs
 use std::net::Ipv4Addr;
 use std::time::Duration;
 
 use anyhow::bail;
-use embedded_svc::wifi::{AuthMethod, ClientConfiguration, Configuration};
+use embedded_svc::wifi::{AccessPointConfiguration, AuthMethod, ClientConfiguration, Configuration};
 use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::netif::{EspNetif, EspNetifWait};
@@ -15,6 +14,7 @@ pub struct Wifi {
 }
 
 pub struct WifiConfig<'a> {
+    pub(crate) ap: bool,
     pub(crate) ssid: &'a str,
     pub(crate) password: &'a str,
 }
@@ -22,8 +22,9 @@ pub struct WifiConfig<'a> {
 impl WifiConfig<'_> {
     pub const fn default() -> Self {
         Self {
-            ssid: "",
-            password: "",
+            ap: true,
+            ssid: "racegate",
+            password: "racegate",
         }
     }
 }
@@ -32,7 +33,7 @@ impl TryInto<Configuration> for &WifiConfig<'_> {
     type Error = anyhow::Error;
 
     fn try_into(self) -> anyhow::Result<Configuration> {
-        let &WifiConfig { ssid, password } = self;
+        let &WifiConfig { ap, ssid, password } = self;
 
         let mut auth_method = AuthMethod::WPA2Personal;
 
@@ -45,15 +46,27 @@ impl TryInto<Configuration> for &WifiConfig<'_> {
             log::info!("Wifi password is empty");
         }
 
-        let config = ClientConfiguration {
-            ssid: ssid.into(),
-            password: password.into(),
-            channel: Default::default(),
-            auth_method,
-            ..Default::default()
-        };
+        if ap {
+            let config = AccessPointConfiguration {
+                ssid: ssid.into(),
+                ssid_hidden: false,
+                password: password.into(),
+                auth_method,
+                ..Default::default()
+            };
 
-        Ok(Configuration::Client(config))
+            Ok(Configuration::AccessPoint(config))
+        } else {
+            let config = ClientConfiguration {
+                ssid: ssid.into(),
+                password: password.into(),
+                channel: Default::default(),
+                auth_method,
+                ..Default::default()
+            };
+
+            Ok(Configuration::Client(config))
+        }
     }
 }
 
