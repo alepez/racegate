@@ -26,7 +26,6 @@ struct LedController<'a> {
 
 impl<'a> LedController<'a> {
     pub fn update(&mut self) {
-        let color = RgbLedColor { r: 0, g: 255, b: 0 };
-        self.led.set_color(color);
+        self.led.set_color(RgbLedColor::from(0x00FF00));
     }
 }

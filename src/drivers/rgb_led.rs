@@ -1,8 +1,8 @@
-use std::cell::RefCell;
 use std::{
     ffi::c_void,
     ptr::{null, null_mut},
 };
+use std::cell::RefCell;
 
 use esp_idf_sys::{
     esp, rmt_config, rmt_config_t, rmt_config_t__bindgen_ty_1, rmt_driver_install,
@@ -17,6 +17,16 @@ pub struct RgbLedColor {
     pub r: u8,
     pub g: u8,
     pub b: u8,
+}
+
+impl From<u32> for RgbLedColor {
+    fn from(x: u32) -> Self {
+        RgbLedColor {
+            r: ((x & 0xFF0000) >> 16) as u8,
+            g: ((x & 0x00FF00) >> 8) as u8,
+            b: ((x & 0x0000FF) >> 0) as u8,
+        }
+    }
 }
 
 impl RgbLed {
