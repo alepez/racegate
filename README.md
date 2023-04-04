@@ -29,6 +29,12 @@ to `cfg.toml` and edit it.
 To build, flash and see logs, you can use `cargo espflash`:
 
 ```shell
+cargo espflash --speed 1500000 --monitor /dev/ttyACM0
+```
+
+For a release build, just add `--release`
+
+```shell
 cargo espflash --speed 1500000 --release --monitor /dev/ttyACM0
 ```
 
@@ -43,7 +49,6 @@ Not all ESP32-C3 have JTAG interface. Example:
 | [ESP32-C3-DevKit-RUST-1](https://mou.sr/40F3w6d)          | Yes  |
 | [M5Stamp C3U](https://docs.m5stack.com/en/core/stamp_c3u) | Yes  |
 | [M5Stamp C3](https://docs.m5stack.com/en/core/stamp_c3u)  | No   |
-
 
 #### External JTAG interface
 
@@ -61,3 +66,47 @@ Connect the JTAG interface to ESP32C3:
 | TDO  | GPIO7   |
 
 **TODO**
+
+#### gdb and openocd
+
+While `esp-idf` is automatically installed by cargo, you need `openocd`
+and `riscv32-elf-gdb`.
+
+On Arch Linux:
+
+```shell
+yay -S openocd-esp32 riscv32-elf-gdb
+```
+
+Make sure local gdbinit is enabled in `~/.gdbinit`:
+
+```text
+set auto-load local-gdbinit on
+add-auto-load-safe-path /
+```
+
+#### Launch openocd
+
+Launch `openocd`:
+
+```shell
+openocd-esp32openocd -f board/esp32c3-builtin.cfg
+```
+
+If you have permission problems accessing the device, just use `sudo` (or create
+the correct udev rules).
+
+#### CLion
+
+Configure CLion to use remote gdb
+
+- Edit configurations
+- Add "Remote debug"
+- Select the debugger: Custom GDB Executable -> /usr/bin/riscv32-elf-gdb
+- Target remote args: `:3333`
+- Select symbol
+  file `/path/to/project/target/riscv32imc-esp-espidf/debug/elf-file` (change
+  path to project and elf file name)
+
+To check if the debugger is working, just put a breakpoint at the beginning of
+main and start the Debug configuration.
