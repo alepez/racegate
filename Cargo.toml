@@ -23,3 +23,8 @@ opt-level = "s"
 [profile.dev]
 debug = true
 opt-level = "z"
+
+[package.metadata.esp-idf-sys]
+esp_idf_version = "tag:v4.4.4"
+esp_idf_tools_install_dir = "global"
+mcu = "esp32c3"
