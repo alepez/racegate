@@ -10,7 +10,7 @@ fn main() -> anyhow::Result<()> {
     esp_idf_sys::link_patches();
     esp_idf_svc::log::EspLogger::initialize_default();
 
-    let config = Config::new();
+    let config = Config::default();
 
     log::info!("Create platform");
     let mut platform = Platform::new(&config);

@@ -14,8 +14,8 @@ pub struct Config {
     pub wifi: WifiConfig<'static>,
 }
 
-impl Config {
-    pub fn new() -> Self {
+impl Default for Config {
+    fn default() -> Self {
         Self {
             wifi: WifiConfig {
                 ap: TOML_CONFIG.ap,

@@ -15,7 +15,7 @@ impl Platform {
         let peripherals = Peripherals::take().unwrap();
 
         let wifi = Wifi::new(peripherals.modem, &config.wifi).expect("Cannot setup wifi");
-        let rgb_led = RgbLed::new();
+        let rgb_led = RgbLed::default();
         let gate = Gate::new(peripherals.pins);
         Self {
             wifi,

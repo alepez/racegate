@@ -1,8 +1,7 @@
+use std::cell::RefCell;
 use std::{
     ffi::c_void,
-    ptr::{null, null_mut},
 };
-use std::cell::RefCell;
 
 use esp_idf_sys::{
     esp, rmt_config, rmt_config_t, rmt_config_t__bindgen_ty_1, rmt_driver_install,
@@ -29,11 +28,13 @@ impl From<u32> for RgbLedColor {
     }
 }
 
-impl RgbLed {
-    pub fn new() -> Self {
+impl Default for RgbLed {
+    fn default() -> Self {
         Self(RefCell::new(WS2812RMT::new().unwrap()))
     }
+}
 
+impl RgbLed {
     pub fn set_color(&self, color: RgbLedColor) {
         self.0
             .borrow_mut()
@@ -67,7 +68,7 @@ unsafe extern "C" fn ws2812_to_rmt(
     translated_size: *mut usize,
     item_num: *mut usize,
 ) {
-    if src == null() || dest == null_mut() {
+    if src.is_null() || dest.is_null() {
         *translated_size = 0;
         *item_num = 0;
         return;
