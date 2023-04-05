@@ -50,7 +50,9 @@ struct LedController<'a> {
 
 impl<'a> LedController<'a> {
     pub fn update(&mut self, app_state: &AppState) {
-        let color = if app_state.is_wifi_connected {
+        let color = if app_state.gate_is_active {
+            0x008080
+        } else if app_state.is_wifi_connected {
             0x008000
         } else {
             0x800000

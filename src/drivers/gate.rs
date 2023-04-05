@@ -13,6 +13,6 @@ impl Gate {
     }
 
     pub fn is_active(&self) -> bool {
-        self.input.is_high()
+        self.input.is_low()
     }
 }
