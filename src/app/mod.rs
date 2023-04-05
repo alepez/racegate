@@ -1,9 +1,10 @@
 use crate::drivers::rgb_led::{RgbLed, RgbLedColor};
 use crate::platform::Platform;
 
-#[derive(Default)]
+#[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
 pub struct AppState {
     is_wifi_connected: bool,
+    gate_is_active: bool,
 }
 
 pub struct App<'a> {
@@ -31,8 +32,15 @@ impl<'a> App<'a> {
     }
 
     pub fn update_state(&mut self) {
-        let state = &mut self.state;
+        let mut state = self.state;
         state.is_wifi_connected = self.platform.wifi.is_connected();
+        state.gate_is_active = self.platform.gate.is_active();
+
+        if state != self.state {
+            log::info!("{:?}", &state);
+        }
+
+        self.state = state;
     }
 }
 

@@ -4,7 +4,7 @@ use anyhow::bail;
 use embedded_svc::wifi::{
     AccessPointConfiguration, AuthMethod, ClientConfiguration, Configuration,
 };
-use esp_idf_hal::peripherals::Peripherals;
+use esp_idf_hal::modem::Modem;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::wifi::{EspWifi, WifiWait};
@@ -70,12 +70,11 @@ impl TryInto<Configuration> for &WifiConfig<'_> {
 }
 
 impl Wifi {
-    pub fn new(config: &WifiConfig) -> anyhow::Result<Wifi> {
-        let peripherals = Peripherals::take().unwrap();
+    pub fn new(modem: Modem, config: &WifiConfig) -> anyhow::Result<Wifi> {
         let sys_loop = EspSystemEventLoop::take().unwrap();
         let nvs = EspDefaultNvsPartition::take().unwrap();
         let is_access_point = config.ap;
-        let mut wifi = EspWifi::new(peripherals.modem, sys_loop.clone(), Some(nvs))?;
+        let mut wifi = EspWifi::new(modem, sys_loop.clone(), Some(nvs))?;
         let config = config.try_into()?;
         wifi.set_configuration(&config)?;
 
