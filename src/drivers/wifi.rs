@@ -2,7 +2,9 @@ use std::net::Ipv4Addr;
 use std::time::Duration;
 
 use anyhow::bail;
-use embedded_svc::wifi::{AccessPointConfiguration, AuthMethod, ClientConfiguration, Configuration};
+use embedded_svc::wifi::{
+    AccessPointConfiguration, AuthMethod, ClientConfiguration, Configuration,
+};
 use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::netif::{EspNetif, EspNetifWait};
@@ -11,7 +13,6 @@ use esp_idf_svc::wifi::{EspWifi, WifiWait};
 
 pub struct Wifi {
     esp_wifi: EspWifi<'static>,
-    sys_loop: EspSystemEventLoop,
 }
 
 pub struct WifiConfig<'a> {
@@ -75,31 +76,26 @@ impl Wifi {
         let peripherals = Peripherals::take().unwrap();
         let sys_loop = EspSystemEventLoop::take().unwrap();
         let nvs = EspDefaultNvsPartition::take().unwrap();
-
+        let is_access_point = config.ap;
         let mut wifi = EspWifi::new(peripherals.modem, sys_loop.clone(), Some(nvs))?;
         let config = config.try_into()?;
         wifi.set_configuration(&config)?;
 
-        Ok(Wifi { esp_wifi: wifi, sys_loop })
-    }
-
-    pub fn start(&mut self) -> anyhow::Result<()> {
-        self.esp_wifi.start()?;
-        let sys_loop = self.sys_loop.clone();
+        wifi.start()?;
 
         let started = {
             let timeout = Duration::from_secs(20);
-            let matcher = || self.esp_wifi.is_started().unwrap_or(false);
+            let matcher = || wifi.is_started().unwrap_or(false);
             WifiWait::new(&sys_loop)?.wait_with_timeout(timeout, matcher)
         };
 
         if !started {
             log::error!("Wi-Fi did not start");
+        } else if !is_access_point {
+            wifi.connect()?;
         }
 
-        self.esp_wifi.connect()?;
-
-        Ok(())
+        Ok(Wifi { esp_wifi: wifi })
     }
 
     pub fn is_connected(&self) -> bool {
