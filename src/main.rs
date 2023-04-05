@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use esp_idf_sys as _;
 
-use racegate::application::App;
+use racegate::app::App;
 use racegate::config::Config;
 use racegate::platform::Platform;
 

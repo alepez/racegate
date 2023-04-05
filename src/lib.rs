@@ -1,4 +1,4 @@
-pub mod application;
+pub mod app;
 pub mod config;
 pub mod drivers;
 pub mod platform;
