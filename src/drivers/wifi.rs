@@ -35,21 +35,20 @@ impl TryInto<Configuration> for &WifiConfig<'_> {
     fn try_into(self) -> anyhow::Result<Configuration> {
         let &WifiConfig { ap, ssid, password } = self;
 
-        let mut auth_method = AuthMethod::WPA2Personal;
-
         if ssid.is_empty() {
-            bail!("missing WiFi name")
+            bail!("Wi-Fi SSID must be non-empty")
         }
 
-        if password.is_empty() {
-            auth_method = AuthMethod::None;
-            log::info!("Wifi password is empty");
-        }
+        let auth_method = if password.is_empty() {
+            log::info!("Wi-Fi password is empty. Authentication is disabled.");
+            AuthMethod::None
+        } else {
+            AuthMethod::WPA2Personal
+        };
 
         if ap {
             let config = AccessPointConfiguration {
                 ssid: ssid.into(),
-                ssid_hidden: false,
                 password: password.into(),
                 auth_method,
                 ..Default::default()
