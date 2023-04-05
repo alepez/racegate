@@ -13,10 +13,10 @@ fn main() -> anyhow::Result<()> {
     let config = Config::new();
 
     log::info!("Create platform");
-    let platform = Platform::new(&config);
+    let mut platform = Platform::new(&config);
 
     log::info!("Create app");
-    let mut app = App::new(&platform);
+    let mut app = App::new(&mut platform);
 
     let period = Duration::from_millis(20);
 

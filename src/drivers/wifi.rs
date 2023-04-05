@@ -10,7 +10,8 @@ use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::wifi::{EspWifi, WifiWait};
 
 pub struct Wifi {
-    _esp_wifi: EspWifi<'static>,
+    esp_wifi: EspWifi<'static>,
+    sys_loop: EspSystemEventLoop,
 }
 
 pub struct WifiConfig<'a> {
@@ -78,40 +79,30 @@ impl Wifi {
         let mut wifi = EspWifi::new(peripherals.modem, sys_loop.clone(), Some(nvs))?;
         let config = config.try_into()?;
         wifi.set_configuration(&config)?;
-        wifi.start()?;
+
+        Ok(Wifi { esp_wifi: wifi, sys_loop })
+    }
+
+    pub fn start(&mut self) -> anyhow::Result<()> {
+        self.esp_wifi.start()?;
+        let sys_loop = self.sys_loop.clone();
 
         let started = {
             let timeout = Duration::from_secs(20);
-            let matcher = || wifi.is_started().unwrap();
+            let matcher = || self.esp_wifi.is_started().unwrap_or(false);
             WifiWait::new(&sys_loop)?.wait_with_timeout(timeout, matcher)
         };
 
         if !started {
-            bail!("Wifi did not start");
+            log::error!("Wi-Fi did not start");
         }
 
-        wifi.connect()?;
+        self.esp_wifi.connect()?;
 
-        let is_connected = {
-            let timeout = Duration::from_secs(20);
-            let matcher = || {
-                wifi.driver().is_connected().unwrap()
-                    && wifi.sta_netif().get_ip_info().unwrap().ip != Ipv4Addr::new(0, 0, 0, 0)
-            };
-            EspNetifWait::new::<EspNetif>(wifi.sta_netif(), &sys_loop)?
-                .wait_with_timeout(timeout, matcher)
-        };
+        Ok(())
+    }
 
-        if !is_connected {
-            bail!("Wifi did not connect or did not receive a DHCP lease");
-        }
-
-        let ip_info = wifi.sta_netif().get_ip_info()?;
-
-        log::info!("Wifi DHCP info: {:?}", ip_info);
-
-        let wifi = Wifi { _esp_wifi: wifi };
-
-        Ok(wifi)
+    pub fn is_connected(&self) -> bool {
+        self.esp_wifi.driver().is_connected().unwrap_or(false)
     }
 }
