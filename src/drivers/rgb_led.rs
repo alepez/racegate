@@ -24,7 +24,7 @@ impl From<u32> for RgbLedColor {
         RgbLedColor {
             r: ((x & 0xFF0000) >> 16) as u8,
             g: ((x & 0x00FF00) >> 8) as u8,
-            b: ((x & 0x0000FF) >> 0) as u8,
+            b: (x & 0x0000FF) as u8,
         }
     }
 }

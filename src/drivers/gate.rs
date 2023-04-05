@@ -1,4 +1,4 @@
-use esp_idf_hal::gpio::{AnyInputPin, Gpio9, Input, InputPin, PinDriver, Pins};
+use esp_idf_hal::gpio::{AnyInputPin, Input, InputPin, PinDriver, Pins};
 
 pub struct Gate {
     input: PinDriver<'static, AnyInputPin, Input>,
