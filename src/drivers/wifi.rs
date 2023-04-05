@@ -1,4 +1,3 @@
-use std::net::Ipv4Addr;
 use std::time::Duration;
 
 use anyhow::bail;
@@ -7,7 +6,6 @@ use embedded_svc::wifi::{
 };
 use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
-use esp_idf_svc::netif::{EspNetif, EspNetifWait};
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::wifi::{EspWifi, WifiWait};
 
