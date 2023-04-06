@@ -1,22 +1,66 @@
+use std::collections::LinkedList;
 use std::sync::{Arc, Mutex};
 use std::{thread::sleep, time::Duration};
 
 use embedded_svc::http::Method;
 use embedded_svc::io::Write;
 use embedded_svc::ws::FrameType;
+use esp_idf_svc::http::server::ws::EspHttpWsDetachedSender;
 use esp_idf_svc::http::server::{Configuration, EspHttpServer};
 use esp_idf_sys::EspError;
 
 use crate::app::AppState;
 use crate::hal::gate::GateStatus;
 
+#[derive(Clone)]
+struct GateSenders(Arc<Mutex<LinkedList<EspHttpWsDetachedSender>>>);
+
+impl GateSenders {
+    fn new() -> Self {
+        Self(Arc::new(Mutex::new(
+            LinkedList::<EspHttpWsDetachedSender>::new(),
+        )))
+    }
+
+    fn add(&self, x: EspHttpWsDetachedSender) {
+        log::info!("detached sender created");
+        if let Ok(mut senders) = self.0.lock() {
+            log::info!("detached sender added");
+            senders.push_back(x);
+            log::info!("detached senders count: {}", senders.len());
+        }
+    }
+
+    fn send(&self, gate_state: GateStatus) {
+        let data = match gate_state {
+            GateStatus::Inactive => b"0",
+            GateStatus::Active => b"1",
+        };
+
+        let frame_type = FrameType::Binary(false);
+
+        if let Ok(mut senders) = self.0.lock() {
+            let senders: &mut LinkedList<EspHttpWsDetachedSender> = &mut senders;
+            for sender in senders.into_iter().filter(|x| !x.is_closed()) {
+                if sender.send(frame_type, data).is_err() {
+                    log::error!("error sending gate status");
+                }
+            }
+        }
+    }
+}
+
 pub struct HttpServer {
     #[allow(dead_code)]
     esp_http_server: EspHttpServer,
     app_state: Arc<Mutex<AppState>>,
+    gate_senders: GateSenders,
 }
 
-fn add_handlers(server: &mut EspHttpServer, app_state: Arc<Mutex<AppState>>) -> anyhow::Result<()> {
+fn add_handlers(server: &mut EspHttpServer) -> anyhow::Result<GateSenders> {
+    let gate_senders = GateSenders::new();
+    let gate_senders_copy = gate_senders.clone();
+
     server.fn_handler("/", Method::Get, |request| {
         let html = index_html();
         let mut response = request.into_ok_response()?;
@@ -38,36 +82,15 @@ fn add_handlers(server: &mut EspHttpServer, app_state: Arc<Mutex<AppState>>) -> 
     })?;
 
     server.ws_handler("/gate", move |conn| -> Result<(), EspError> {
-        let frame_type = FrameType::Binary(false);
-        let mut sent_gate_status: Option<GateStatus> = None;
-
-        loop {
-            let gate_status = app_state.try_lock().map(|x| x.gate_status).ok();
-
-            if gate_status != sent_gate_status {
-                let data = match gate_status {
-                    Some(GateStatus::Inactive) => b"0",
-                    Some(GateStatus::Active) => b"1",
-                    _ => b"?",
-                };
-
-                log::info!("{:?}", gate_status);
-
-                if conn.send(frame_type, data).is_err() {
-                    log::error!("error sending gate status");
-                    break;
-                }
-
-                sent_gate_status = gate_status;
+        if conn.is_new() {
+            if let Ok(detached_sender) = conn.create_detached_sender() {
+                gate_senders_copy.add(detached_sender);
             }
-
-            sleep(Duration::from_millis(10));
         }
-
         Ok(())
     })?;
 
-    Ok(())
+    Ok(gate_senders)
 }
 
 impl HttpServer {
@@ -75,10 +98,11 @@ impl HttpServer {
         let conf = Configuration::default();
         let mut esp_http_server = EspHttpServer::new(&conf)?;
         let app_state = Arc::new(Mutex::new(Default::default()));
-        add_handlers(&mut esp_http_server, app_state.clone())?;
+        let gate_senders = add_handlers(&mut esp_http_server)?;
         Ok(HttpServer {
             esp_http_server,
             app_state,
+            gate_senders,
         })
     }
 }
@@ -89,6 +113,11 @@ impl crate::svc::HttpServer for HttpServer {
             .try_lock()
             .as_mut()
             .map(|x| {
+                if state.gate_status != x.gate_status {
+                    log::info!("gate changed");
+                    self.gate_senders.send(state.gate_status);
+                }
+
                 **x = state;
             })
             .ok();
