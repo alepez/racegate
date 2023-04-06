@@ -1,4 +1,4 @@
-use std::collections::LinkedList;
+use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use std::{thread::sleep, time::Duration};
 
@@ -13,12 +13,12 @@ use crate::app::AppState;
 use crate::hal::gate::GateStatus;
 
 #[derive(Clone)]
-struct GateSenders(Arc<Mutex<LinkedList<EspHttpWsDetachedSender>>>);
+struct GateSenders(Arc<Mutex<VecDeque<EspHttpWsDetachedSender>>>);
 
 impl GateSenders {
     fn new() -> Self {
         Self(Arc::new(Mutex::new(
-            LinkedList::<EspHttpWsDetachedSender>::new(),
+            VecDeque::<EspHttpWsDetachedSender>::new(),
         )))
     }
 
@@ -31,8 +31,8 @@ impl GateSenders {
         }
     }
 
-    fn send(&self, gate_state: GateStatus) {
-        let data = match gate_state {
+    fn send(&self, gate_status: GateStatus) {
+        let data = match gate_status {
             GateStatus::Inactive => b"0",
             GateStatus::Active => b"1",
         };
@@ -40,7 +40,8 @@ impl GateSenders {
         let frame_type = FrameType::Binary(false);
 
         if let Ok(mut senders) = self.0.lock() {
-            let senders: &mut LinkedList<EspHttpWsDetachedSender> = &mut senders;
+            // FIXME Clean up closed
+            let senders: &mut VecDeque<EspHttpWsDetachedSender> = &mut senders;
             for sender in senders.into_iter().filter(|x| !x.is_closed()) {
                 if sender.send(frame_type, data).is_err() {
                     log::error!("error sending gate status");
