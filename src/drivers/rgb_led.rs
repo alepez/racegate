@@ -1,7 +1,5 @@
 use std::cell::RefCell;
-use std::{
-    ffi::c_void,
-};
+use std::ffi::c_void;
 
 use esp_idf_sys::{
     esp, rmt_config, rmt_config_t, rmt_config_t__bindgen_ty_1, rmt_driver_install,
@@ -10,32 +8,18 @@ use esp_idf_sys::{
     rmt_tx_config_t, rmt_wait_tx_done, rmt_write_sample, u_int8_t,
 };
 
-pub struct RgbLed(RefCell<WS2812RMT>);
+use crate::hal::rgb_led::{RgbLed, RgbLedColor};
 
-pub struct RgbLedColor {
-    pub r: u8,
-    pub g: u8,
-    pub b: u8,
-}
+pub struct WS2812RgbLed(RefCell<WS2812RMT>);
 
-impl From<u32> for RgbLedColor {
-    fn from(x: u32) -> Self {
-        RgbLedColor {
-            r: ((x & 0xFF0000) >> 16) as u8,
-            g: ((x & 0x00FF00) >> 8) as u8,
-            b: (x & 0x0000FF) as u8,
-        }
-    }
-}
-
-impl Default for RgbLed {
+impl Default for WS2812RgbLed {
     fn default() -> Self {
         Self(RefCell::new(WS2812RMT::new().unwrap()))
     }
 }
 
-impl RgbLed {
-    pub fn set_color(&self, color: RgbLedColor) {
+impl RgbLed for WS2812RgbLed {
+    fn set_color(&self, color: RgbLedColor) {
         self.0
             .borrow_mut()
             .set_color(color.r, color.g, color.b)

@@ -1,5 +1,6 @@
-use crate::drivers::rgb_led::{RgbLed, RgbLedColor};
 use crate::hal::gate::Gate;
+use crate::hal::rgb_led::RgbLed;
+use crate::hal::rgb_led::RgbLedColor;
 use crate::hal::wifi::Wifi;
 use crate::platform::Platform;
 
@@ -47,7 +48,7 @@ impl<'a> App<'a> {
 }
 
 struct LedController<'a> {
-    led: &'a RgbLed,
+    led: &'a dyn RgbLed,
 }
 
 impl<'a> LedController<'a> {
