@@ -1,0 +1,44 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>ESP Web Server</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8">
+</head>
+<body>
+<div>Gate: <span id="gate"></span></div>
+<script>
+    var gateway = `ws://${window.location.hostname}/gate`;
+    var websocket = null;
+
+    function initWebSocket() {
+        websocket = new WebSocket(gateway);
+        websocket.onopen = onOpen;
+        websocket.onclose = onClose;
+        websocket.onmessage = onMessage;
+    }
+
+    function onOpen(event) {
+
+    }
+
+    function onClose(event) {
+        setTimeout(initWebSocket, 2000);
+    }
+
+    function onMessage(event) {
+        event.data.text().then(onMessageData);
+    }
+
+    function onMessageData(data) {
+        document.getElementById('gate').innerHTML = data === "1" ? "Active" : "Inactive";
+    }
+
+    function onLoad(event) {
+        initWebSocket();
+    }
+
+    window.addEventListener('load', onLoad);
+</script>
+</body>
+</html>

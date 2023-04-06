@@ -63,9 +63,8 @@ fn add_handlers(server: &mut EspHttpServer) -> anyhow::Result<GateSenders> {
     let gate_senders_copy = gate_senders.clone();
 
     server.fn_handler("/", Method::Get, |request| {
-        let html = index_html();
         let mut response = request.into_ok_response()?;
-        response.write_all(html.as_bytes())?;
+        response.write_all(index_html())?;
         Ok(())
     })?;
 
@@ -125,17 +124,6 @@ impl crate::svc::HttpServer for HttpServer {
     }
 }
 
-fn index_html() -> &'static str {
-    r#"
-<!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="utf-8">
-        <title>racegate</title>
-    </head>
-    <body>
-        This is racegate
-    </body>
-</html>
-"#
+fn index_html() -> &'static [u8] {
+    include_bytes!("../../assets/index.html")
 }
