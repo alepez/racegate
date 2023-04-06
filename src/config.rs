@@ -1,4 +1,4 @@
-use crate::drivers::wifi::WifiConfig;
+use crate::hal::wifi::WifiConfig;
 
 #[toml_cfg::toml_config]
 pub struct TomlConfig {

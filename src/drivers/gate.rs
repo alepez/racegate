@@ -1,8 +1,6 @@
 use esp_idf_hal::gpio::{AnyInputPin, Input, InputPin, PinDriver, Pins};
 
-pub trait Gate {
-    fn is_active(&self) -> bool;
-}
+use crate::hal::gate::Gate;
 
 pub struct DevkitButton {
     input: PinDriver<'static, AnyInputPin, Input>,
@@ -14,10 +12,6 @@ impl DevkitButton {
         let input = PinDriver::input(pin).unwrap();
         let input = input.into_input().unwrap();
         Self { input }
-    }
-
-    pub fn is_active(&self) -> bool {
-        self.input.is_low()
     }
 }
 
@@ -37,10 +31,6 @@ impl M5StampC3Button {
         let input = PinDriver::input(pin).unwrap();
         let input = input.into_input().unwrap();
         Self { input }
-    }
-
-    pub fn is_active(&self) -> bool {
-        self.input.is_low()
     }
 }
 

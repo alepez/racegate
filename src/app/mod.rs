@@ -1,4 +1,6 @@
 use crate::drivers::rgb_led::{RgbLed, RgbLedColor};
+use crate::hal::gate::Gate;
+use crate::hal::wifi::Wifi;
 use crate::platform::Platform;
 
 #[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]

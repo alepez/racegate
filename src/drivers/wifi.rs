@@ -7,26 +7,12 @@ use embedded_svc::wifi::{
 use esp_idf_hal::modem::Modem;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
-use esp_idf_svc::wifi::{EspWifi, WifiWait};
+use esp_idf_svc::wifi::WifiWait;
 
-pub struct Wifi {
-    esp_wifi: EspWifi<'static>,
-}
+use crate::hal::wifi::{Wifi, WifiConfig};
 
-pub struct WifiConfig<'a> {
-    pub(crate) ap: bool,
-    pub(crate) ssid: &'a str,
-    pub(crate) password: &'a str,
-}
-
-impl WifiConfig<'_> {
-    pub const fn default() -> Self {
-        Self {
-            ap: true,
-            ssid: "racegate",
-            password: "racegate",
-        }
-    }
+pub struct EspWifi {
+    esp_wifi: esp_idf_svc::wifi::EspWifi<'static>,
 }
 
 impl TryInto<Configuration> for &WifiConfig<'_> {
@@ -69,12 +55,12 @@ impl TryInto<Configuration> for &WifiConfig<'_> {
     }
 }
 
-impl Wifi {
-    pub fn new(modem: Modem, config: &WifiConfig) -> anyhow::Result<Wifi> {
+impl EspWifi {
+    pub fn new(modem: Modem, config: &WifiConfig) -> anyhow::Result<EspWifi> {
         let sys_loop = EspSystemEventLoop::take().unwrap();
         let nvs = EspDefaultNvsPartition::take().unwrap();
         let is_access_point = config.ap;
-        let mut wifi = EspWifi::new(modem, sys_loop.clone(), Some(nvs))?;
+        let mut wifi = esp_idf_svc::wifi::EspWifi::new(modem, sys_loop.clone(), Some(nvs))?;
         let config = config.try_into()?;
         wifi.set_configuration(&config)?;
 
@@ -92,10 +78,12 @@ impl Wifi {
             wifi.connect()?;
         }
 
-        Ok(Wifi { esp_wifi: wifi })
+        Ok(EspWifi { esp_wifi: wifi })
     }
+}
 
-    pub fn is_connected(&self) -> bool {
+impl Wifi for EspWifi {
+    fn is_connected(&self) -> bool {
         self.esp_wifi.driver().is_connected().unwrap_or(false)
     }
 }

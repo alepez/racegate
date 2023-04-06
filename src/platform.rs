@@ -3,7 +3,7 @@ use esp_idf_hal::peripherals::Peripherals;
 use crate::config::Config;
 use crate::drivers::gate::DevkitButton as Gate;
 use crate::drivers::rgb_led::RgbLed;
-use crate::drivers::wifi::Wifi;
+use crate::drivers::wifi::EspWifi as Wifi;
 
 pub struct Platform {
     pub wifi: Wifi,
