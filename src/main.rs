@@ -11,11 +11,7 @@ fn main() -> anyhow::Result<()> {
     esp_idf_svc::log::EspLogger::initialize_default();
 
     let config = Config {
-        wifi: WifiConfig {
-            ap: true,
-            ssid: "racegate",
-            password: "racegate",
-        },
+        wifi: WifiConfig::from_env_var().unwrap_or_default(),
     };
 
     log::info!("Create platform");
