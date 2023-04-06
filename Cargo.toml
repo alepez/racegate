@@ -4,6 +4,11 @@ version = "0.1.0"
 authors = ["Alessandro Pezzato <alessandro@pezzato.net>"]
 edition = "2021"
 
+[features]
+default = ["rust_devkit"]
+m5stamp_c3 = []
+rust_devkit = []
+
 [dependencies]
 anyhow = "1"
 embedded-svc = "0.24"

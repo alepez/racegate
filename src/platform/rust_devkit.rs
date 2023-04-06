@@ -9,13 +9,13 @@ use crate::hal::rgb_led::RgbLed;
 use crate::hal::wifi::Wifi;
 use crate::hal::Platform;
 
-pub struct RustDevkit {
+pub struct PlatformImpl {
     pub wifi: EspWifi,
     pub rgb_led: WS2812RgbLed,
     pub gate: DevkitButton,
 }
 
-impl RustDevkit {
+impl PlatformImpl {
     pub fn new(config: &Config) -> Self {
         let peripherals = Peripherals::take().unwrap();
 
@@ -30,7 +30,7 @@ impl RustDevkit {
     }
 }
 
-impl Platform for RustDevkit {
+impl Platform for PlatformImpl {
     fn wifi(&self) -> &(dyn Wifi + '_) {
         &self.wifi
     }
