@@ -4,7 +4,6 @@ use esp_idf_sys as _;
 
 use racegate::app::App;
 use racegate::config::Config;
-use racegate::platform::Platform;
 
 fn main() -> anyhow::Result<()> {
     esp_idf_sys::link_patches();
@@ -13,10 +12,11 @@ fn main() -> anyhow::Result<()> {
     let config = Config::default();
 
     log::info!("Create platform");
-    let mut platform = Platform::new(&config);
+    let mut p = racegate::platform::create(&config);
+    let p = p.as_mut();
 
     log::info!("Create app");
-    let mut app = App::new(&mut platform);
+    let mut app = App::new(p);
 
     let period = Duration::from_millis(20);
 

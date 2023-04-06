@@ -1,8 +1,6 @@
-use crate::hal::gate::Gate;
 use crate::hal::rgb_led::RgbLed;
 use crate::hal::rgb_led::RgbLedColor;
-use crate::hal::wifi::Wifi;
-use crate::platform::Platform;
+use crate::hal::Platform;
 
 #[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
 pub struct AppState {
@@ -12,14 +10,14 @@ pub struct AppState {
 
 pub struct App<'a> {
     led_controller: LedController<'a>,
-    platform: &'a Platform,
+    platform: &'a dyn Platform,
     state: AppState,
 }
 
 impl<'a> App<'a> {
-    pub fn new(platform: &'a mut Platform) -> Self {
+    pub fn new(platform: &'a mut (dyn Platform)) -> Self {
         let led_controller = LedController {
-            led: &platform.rgb_led,
+            led: platform.rgb_led(),
         };
 
         Self {
@@ -36,8 +34,8 @@ impl<'a> App<'a> {
 
     pub fn update_state(&mut self) {
         let mut state = self.state;
-        state.is_wifi_connected = self.platform.wifi.is_connected();
-        state.gate_is_active = self.platform.gate.is_active();
+        state.is_wifi_connected = self.platform.wifi().is_connected();
+        state.gate_is_active = self.platform.gate().is_active();
 
         if state != self.state {
             log::info!("{:?}", &state);
