@@ -1,4 +1,6 @@
 pub trait Wifi {
+    fn setup(&mut self, config: &WifiConfig) -> anyhow::Result<()>;
+
     fn is_connected(&self) -> bool;
 }
 

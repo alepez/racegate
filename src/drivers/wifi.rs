@@ -13,6 +13,7 @@ use crate::hal::wifi::{Wifi, WifiConfig};
 
 pub struct EspWifi {
     esp_wifi: esp_idf_svc::wifi::EspWifi<'static>,
+    sys_loop: EspSystemEventLoop,
 }
 
 impl TryInto<Configuration> for &WifiConfig<'_> {
@@ -56,33 +57,40 @@ impl TryInto<Configuration> for &WifiConfig<'_> {
 }
 
 impl EspWifi {
-    pub fn new(modem: Modem, config: &WifiConfig) -> anyhow::Result<EspWifi> {
-        let sys_loop = EspSystemEventLoop::take().unwrap();
-        let nvs = EspDefaultNvsPartition::take().unwrap();
-        let is_access_point = config.ap;
-        let mut wifi = esp_idf_svc::wifi::EspWifi::new(modem, sys_loop.clone(), Some(nvs))?;
-        let config = config.try_into()?;
-        wifi.set_configuration(&config)?;
+    pub fn new(modem: Modem) -> anyhow::Result<EspWifi> {
+        let sys_loop = EspSystemEventLoop::take()?;
+        let nvs = EspDefaultNvsPartition::take()?;
+        let esp_wifi = esp_idf_svc::wifi::EspWifi::new(modem, sys_loop.clone(), Some(nvs))?;
+        Ok(Self {
+            esp_wifi,
+            sys_loop: sys_loop.clone(),
+        })
+    }
+}
 
-        wifi.start()?;
+impl Wifi for EspWifi {
+    fn setup(&mut self, config: &WifiConfig) -> anyhow::Result<()> {
+        let is_access_point = config.ap;
+        let config = config.try_into()?;
+
+        self.esp_wifi.set_configuration(&config)?;
+        self.esp_wifi.start()?;
 
         let started = {
             let timeout = Duration::from_secs(20);
-            let matcher = || wifi.is_started().unwrap_or(false);
-            WifiWait::new(&sys_loop)?.wait_with_timeout(timeout, matcher)
+            let matcher = || self.esp_wifi.is_started().unwrap_or(false);
+            WifiWait::new(&self.sys_loop)?.wait_with_timeout(timeout, matcher)
         };
 
         if !started {
             log::error!("Wi-Fi did not start");
         } else if !is_access_point {
-            wifi.connect()?;
+            self.esp_wifi.connect()?;
         }
 
-        Ok(EspWifi { esp_wifi: wifi })
+        Ok(())
     }
-}
 
-impl Wifi for EspWifi {
     fn is_connected(&self) -> bool {
         self.esp_wifi.driver().is_connected().unwrap_or(false)
     }
