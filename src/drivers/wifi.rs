@@ -64,7 +64,7 @@ impl EspWifi {
         let esp_wifi = esp_idf_svc::wifi::EspWifi::new(modem, sys_loop.clone(), Some(nvs))?;
         Ok(Self {
             esp_wifi: RefCell::new(esp_wifi),
-            sys_loop: sys_loop.clone(),
+            sys_loop,
         })
     }
 }

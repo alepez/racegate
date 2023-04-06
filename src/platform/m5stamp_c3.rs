@@ -20,7 +20,7 @@ impl PlatformImpl {
     pub fn new(config: &Config) -> Self {
         let peripherals = Peripherals::take().unwrap();
 
-        let mut wifi = EspWifi::new(peripherals.modem).expect("Cannot create Wi-Fi");
+        let wifi = EspWifi::new(peripherals.modem).expect("Cannot create Wi-Fi");
         wifi.setup(&config.wifi).expect("Cannot setup Wi-Fi");
 
         let rgb_led = WS2812RgbLed::default();
