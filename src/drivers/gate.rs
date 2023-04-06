@@ -7,10 +7,10 @@ pub struct EspGate {
 }
 
 impl EspGate {
-    pub fn new(pin: AnyInputPin) -> Self {
-        let input = PinDriver::input(pin).unwrap();
-        let input = input.into_input().unwrap();
-        Self { input }
+    pub fn new(pin: AnyInputPin) -> anyhow::Result<EspGate> {
+        let input = PinDriver::input(pin)?;
+        let input = input.into_input()?;
+        Ok(Self { input })
     }
 }
 

@@ -22,7 +22,8 @@ impl PlatformImpl {
 
         let wifi = EspWifi::new(peripherals.modem, &config.wifi).expect("Cannot setup wifi");
         let rgb_led = WS2812RgbLed::default();
-        let gate = EspGate::new(peripherals.pins.gpio3.downgrade_input());
+        let gate =
+            EspGate::new(peripherals.pins.gpio3.downgrade_input()).expect("Cannot setup gate");
         Self {
             wifi,
             rgb_led,
