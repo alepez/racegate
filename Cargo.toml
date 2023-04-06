@@ -16,7 +16,6 @@ esp-idf-hal = { version = "0.40" }
 esp-idf-svc = { version = "0.45", features = ["experimental", "alloc"] }
 esp-idf-sys = { version = "0.32", features = ["binstart", "native"] }
 log = "0.4"
-toml-cfg = "0.1"
 
 [build-dependencies]
 anyhow = "1"

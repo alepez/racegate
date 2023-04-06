@@ -13,15 +13,6 @@ rustup component add rust-src --toolchain nightly-2023-04-04
 cargo install cargo-espflash ldproxy
 ```
 
-### Configuration
-
-You can configure some options in `cfg.toml`. This options will be embedded in
-the resulting binary. This feature is provided
-by [toml-cfg](https://crates.io/crates/toml-cfg)
-
-The file `cfg.toml` is not provided. But you can copy `cfg.toml.example`
-to `cfg.toml` and edit it.
-
 ## Development
 
 ### Flash

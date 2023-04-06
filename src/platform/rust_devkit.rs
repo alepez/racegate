@@ -1,7 +1,6 @@
 use esp_idf_hal::gpio::InputPin;
 use esp_idf_hal::peripherals::Peripherals;
 
-use crate::config::Config;
 use crate::drivers::gate::EspGate;
 use crate::drivers::rgb_led::WS2812RgbLed;
 use crate::drivers::wifi::EspWifi;
@@ -9,6 +8,7 @@ use crate::hal::gate::Gate;
 use crate::hal::rgb_led::RgbLed;
 use crate::hal::wifi::Wifi;
 use crate::hal::Platform;
+use crate::platform::Config;
 
 pub struct PlatformImpl {
     pub wifi: EspWifi,
