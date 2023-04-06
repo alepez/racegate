@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::time::Duration;
 
 use anyhow::bail;
@@ -12,7 +13,7 @@ use esp_idf_svc::wifi::WifiWait;
 use crate::hal::wifi::{Wifi, WifiConfig};
 
 pub struct EspWifi {
-    esp_wifi: esp_idf_svc::wifi::EspWifi<'static>,
+    esp_wifi: RefCell<esp_idf_svc::wifi::EspWifi<'static>>,
     sys_loop: EspSystemEventLoop,
 }
 
@@ -62,36 +63,42 @@ impl EspWifi {
         let nvs = EspDefaultNvsPartition::take()?;
         let esp_wifi = esp_idf_svc::wifi::EspWifi::new(modem, sys_loop.clone(), Some(nvs))?;
         Ok(Self {
-            esp_wifi,
+            esp_wifi: RefCell::new(esp_wifi),
             sys_loop: sys_loop.clone(),
         })
     }
 }
 
 impl Wifi for EspWifi {
-    fn setup(&mut self, config: &WifiConfig) -> anyhow::Result<()> {
+    fn setup(&self, config: &WifiConfig) -> anyhow::Result<()> {
         let is_access_point = config.ap;
         let config = config.try_into()?;
 
-        self.esp_wifi.set_configuration(&config)?;
-        self.esp_wifi.start()?;
+        let mut esp_wifi = self.esp_wifi.try_borrow_mut()?;
+
+        esp_wifi.set_configuration(&config)?;
+        esp_wifi.start()?;
 
         let started = {
             let timeout = Duration::from_secs(20);
-            let matcher = || self.esp_wifi.is_started().unwrap_or(false);
+            let matcher = || esp_wifi.is_started().unwrap_or(false);
             WifiWait::new(&self.sys_loop)?.wait_with_timeout(timeout, matcher)
         };
 
         if !started {
             log::error!("Wi-Fi did not start");
         } else if !is_access_point {
-            self.esp_wifi.connect()?;
+            esp_wifi.connect()?;
         }
 
         Ok(())
     }
 
     fn is_connected(&self) -> bool {
-        self.esp_wifi.driver().is_connected().unwrap_or(false)
+        if let Ok(esp_wifi) = self.esp_wifi.try_borrow() {
+            esp_wifi.driver().is_connected().unwrap_or(false)
+        } else {
+            false
+        }
     }
 }
