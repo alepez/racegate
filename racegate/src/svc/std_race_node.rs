@@ -41,17 +41,27 @@ impl StdRaceNode {
         } = config;
 
         let state = SharedNodeState::default();
-        let state_copy = state.clone();
 
         log::info!("Starting race node");
 
         let sender = Self::make_sender(sender_addr)?;
         let receiver = Self::make_receiver(receiver_addr)?;
 
-        let thread = std::thread::Builder::new()
+        let thread = Self::spawn_thread(broadcast_addr, state.clone(), sender, receiver);
+
+        Ok(StdRaceNode { thread, state })
+    }
+
+    fn spawn_thread(
+        broadcast_addr: SocketAddr,
+        state: SharedNodeState,
+        sender: UdpSocket,
+        receiver: UdpSocket,
+    ) -> JoinHandle<()> {
+        std::thread::Builder::new()
             .stack_size(64 * 1024)
             .spawn(move || loop {
-                let msg: Option<RaceNodeMessage> = state_copy.clone().try_into().ok();
+                let msg: Option<RaceNodeMessage> = state.clone().try_into().ok();
                 if let Some(msg) = msg {
                     sender.send_to(&msg.data(), broadcast_addr).ok();
                 }
@@ -69,9 +79,7 @@ impl StdRaceNode {
                     }
                 }
             })
-            .unwrap();
-
-        Ok(StdRaceNode { thread, state })
+            .unwrap()
     }
 
     fn make_receiver(receiver_addr: SocketAddr) -> anyhow::Result<UdpSocket> {
