@@ -40,7 +40,10 @@ impl PlatformImpl {
 
         let rgb_led = WS2812RgbLed::default();
 
-        let gate_pin = peripherals.pins.gpio8.downgrade_input();
+        let gate_pin = match config.board_type {
+            BoardType::M5StampC3 => peripherals.pins.gpio4.downgrade_input(),
+            BoardType::RustDevKit => peripherals.pins.gpio8.downgrade_input(),
+        };
 
         let button_pin = match config.board_type {
             BoardType::M5StampC3 => peripherals.pins.gpio3.downgrade_input(),
