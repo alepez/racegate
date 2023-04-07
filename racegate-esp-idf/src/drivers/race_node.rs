@@ -16,40 +16,41 @@ impl EspRaceNode {
     pub fn new() -> anyhow::Result<Self> {
         let state = SharedNodeState::default();
         let state_copy = state.clone();
-        let bind_addr: SocketAddr = "0.0.0.0:6699".parse()?;
-        let dst_addr: SocketAddr = "255.255.255.255:6699".parse()?;
-        log::info!("Starting race node at {}", bind_addr);
 
-        let socket = UdpSocket::bind(bind_addr)?;
-        socket.connect(dst_addr)?;
-        log::info!("race node ready at {}", bind_addr);
-        socket.set_read_timeout(Some(Duration::from_millis(40)))?;
+        log::info!("Starting race node");
+
+        let sender_addr: SocketAddr = "0.0.0.0:0".parse()?;
+        let sender = UdpSocket::bind(sender_addr)?;
+        sender.set_broadcast(true)?;
+
+        let receiver_addr: SocketAddr = "0.0.0.0:6699".parse()?;
+        let receiver = UdpSocket::bind(receiver_addr)?;
+        receiver.set_broadcast(true)?;
+        receiver.set_read_timeout(Some(Duration::from_millis(40)))?;
+
+        let broadcast_addr: SocketAddr = "255.255.255.255:6699".parse()?;
 
         let thread = std::thread::Builder::new()
             .stack_size(64 * 1024)
             .spawn(move || loop {
                 let msg: Option<RaceNodeMessage> = state_copy.clone().try_into().ok();
                 if let Some(msg) = msg {
-                    socket.send(&msg.data()).ok();
+                    // log::info!("send");
+                    sender.send_to(&msg.data(), broadcast_addr).ok();
                 }
 
-                // log::info!("waiting messages from other nodes...");
-                let mut count = 0;
+                // log::info!("receive");
                 loop {
                     let mut buf: [u8; 16] = [0; 16];
-                    if let Ok((number_of_bytes, src_addr)) = socket.recv_from(&mut buf) {
-                        count += 1;
+                    if let Ok((number_of_bytes, src_addr)) = receiver.recv_from(&mut buf) {
                         if number_of_bytes == 16 {
                             let msg = RaceNodeMessage::from(buf);
                             let s = SystemState::from(&msg);
-                            log::info!("{:?}", s);
+                            log::info!("{src_addr} : {:?}", s);
                         }
                     } else {
                         break;
                     }
-                }
-                if count > 0 {
-                    log::info!("received count: {}", count);
                 }
             })
             .unwrap();
