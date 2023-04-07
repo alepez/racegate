@@ -45,23 +45,17 @@ impl StdRaceNode {
 
         log::info!("Starting race node");
 
-        let sender = UdpSocket::bind(sender_addr)?;
-        sender.set_broadcast(true)?;
-
-        let receiver = UdpSocket::bind(receiver_addr)?;
-        receiver.set_broadcast(true)?;
-        receiver.set_read_timeout(Some(Duration::from_millis(40)))?;
+        let sender = Self::make_sender(sender_addr)?;
+        let receiver = Self::make_receiver(receiver_addr)?;
 
         let thread = std::thread::Builder::new()
             .stack_size(64 * 1024)
             .spawn(move || loop {
                 let msg: Option<RaceNodeMessage> = state_copy.clone().try_into().ok();
                 if let Some(msg) = msg {
-                    // log::info!("send");
                     sender.send_to(&msg.data(), broadcast_addr).ok();
                 }
 
-                // log::info!("receive");
                 loop {
                     let mut buf: [u8; 16] = [0; 16];
                     if let Ok((number_of_bytes, src_addr)) = receiver.recv_from(&mut buf) {
@@ -78,6 +72,19 @@ impl StdRaceNode {
             .unwrap();
 
         Ok(StdRaceNode { thread, state })
+    }
+
+    fn make_receiver(receiver_addr: SocketAddr) -> anyhow::Result<UdpSocket> {
+        let receiver = UdpSocket::bind(receiver_addr)?;
+        receiver.set_broadcast(true)?;
+        receiver.set_read_timeout(Some(Duration::from_millis(40)))?;
+        Ok(receiver)
+    }
+
+    fn make_sender(sender_addr: SocketAddr) -> anyhow::Result<UdpSocket> {
+        let sender = UdpSocket::bind(sender_addr)?;
+        sender.set_broadcast(true)?;
+        Ok(sender)
     }
 }
 
@@ -125,9 +132,10 @@ impl TryFrom<SharedNodeState> for RaceNodeMessage {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use crate::svc::std_race_node::StdRaceNodeConfig;
     use crate::svc::StdRaceNode;
-    use std::time::Duration;
 
     fn start_config() -> StdRaceNodeConfig {
         StdRaceNodeConfig {
