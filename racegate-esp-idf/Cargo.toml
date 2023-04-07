@@ -24,6 +24,7 @@ embuild = "0.31"
 
 [profile.release]
 opt-level = "s"
+lto = "fat"
 
 [profile.dev]
 debug = true
