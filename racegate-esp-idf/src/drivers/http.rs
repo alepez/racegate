@@ -10,7 +10,7 @@ use esp_idf_svc::http::server::{Configuration, EspHttpServer};
 use esp_idf_sys::EspError;
 
 use racegate::app::AppState;
-use racegate::hal::gate::GateStatus;
+use racegate::hal::gate::GateState;
 
 #[derive(Clone)]
 struct GateSenders(Arc<Mutex<VecDeque<EspHttpWsDetachedSender>>>);
@@ -31,10 +31,10 @@ impl GateSenders {
         }
     }
 
-    fn send(&self, gate_status: GateStatus) {
-        let data = match gate_status {
-            GateStatus::Inactive => b"0",
-            GateStatus::Active => b"1",
+    fn send(&self, gate_state: GateState) {
+        let data = match gate_state {
+            GateState::Inactive => b"0",
+            GateState::Active => b"1",
         };
 
         let frame_type = FrameType::Binary(false);
@@ -113,9 +113,9 @@ impl racegate::svc::HttpServer for HttpServer {
             .try_lock()
             .as_mut()
             .map(|x| {
-                if state.gate_status != x.gate_status {
+                if state.gate_state != x.gate_state {
                     log::info!("gate changed");
-                    self.gate_senders.send(state.gate_status);
+                    self.gate_senders.send(state.gate_state);
                 }
 
                 **x = state;

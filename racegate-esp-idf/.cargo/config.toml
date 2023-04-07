@@ -3,7 +3,7 @@ target = "riscv32imc-esp-espidf"
 
 [target.riscv32imc-esp-espidf]
 linker = "ldproxy"
-runner = "espflash --speed 1500000 --monitor /dev/ttyACM0"
+runner = "espflash --speed 1500000 --monitor /dev/ttyACM0 --partition-table partitions/partitions_singleapp_4MB.csv"
 
 # See https://github.com/ivmarkov/embuild/issues/16
 rustflags = ["-C", "default-linker-libraries"]

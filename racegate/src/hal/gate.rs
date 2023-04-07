@@ -1,16 +1,11 @@
 pub trait Gate {
     fn is_active(&self) -> bool;
-    fn status(&self) -> GateStatus;
+    fn state(&self) -> GateState;
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum GateStatus {
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Default)]
+pub enum GateState {
+    #[default]
     Inactive,
     Active,
-}
-
-impl Default for GateStatus {
-    fn default() -> Self {
-        GateStatus::Inactive
-    }
 }

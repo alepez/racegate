@@ -1,4 +1,5 @@
-use crate::hal::gate::GateStatus;
+use crate::hal::button::ButtonState;
+use crate::hal::gate::GateState;
 use crate::hal::rgb_led::RgbLed;
 use crate::hal::rgb_led::RgbLedColor;
 use crate::hal::Platform;
@@ -6,7 +7,8 @@ use crate::hal::Platform;
 #[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
 pub struct AppState {
     is_wifi_connected: bool,
-    pub gate_status: GateStatus,
+    pub gate_state: GateState,
+    pub button_state: ButtonState,
 }
 
 pub struct App<'a> {
@@ -37,7 +39,8 @@ impl<'a> App<'a> {
     pub fn update_state(&mut self) {
         let mut state = self.state;
         state.is_wifi_connected = self.platform.wifi().is_connected();
-        state.gate_status = self.platform.gate().status();
+        state.gate_state = self.platform.gate().state();
+        state.button_state = self.platform.button().state();
 
         if state != self.state {
             log::info!("{:?}", &state);
@@ -53,7 +56,7 @@ struct LedController<'a> {
 
 impl<'a> LedController<'a> {
     pub fn update(&mut self, app_state: &AppState) {
-        let color = if app_state.gate_status == GateStatus::Active {
+        let color = if app_state.gate_state == GateState::Active {
             0x008080
         } else if app_state.is_wifi_connected {
             0x008000
@@ -62,5 +65,14 @@ impl<'a> LedController<'a> {
         };
 
         self.led.set_color(RgbLedColor::from(color));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works() {
+        let result = 2 + 2;
+        assert_eq!(result, 4);
     }
 }

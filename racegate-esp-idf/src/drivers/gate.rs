@@ -1,6 +1,6 @@
 use esp_idf_hal::gpio::{AnyInputPin, Input, PinDriver};
 
-use racegate::hal::gate::{Gate, GateStatus};
+use racegate::hal::gate::{Gate, GateState};
 
 pub struct EspGate {
     input: PinDriver<'static, AnyInputPin, Input>,
@@ -19,11 +19,11 @@ impl Gate for EspGate {
         self.input.is_low()
     }
 
-    fn status(&self) -> GateStatus {
+    fn state(&self) -> GateState {
         if self.is_active() {
-            GateStatus::Active
+            GateState::Active
         } else {
-            GateStatus::Inactive
+            GateState::Inactive
         }
     }
 }
