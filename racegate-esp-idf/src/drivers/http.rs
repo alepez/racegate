@@ -9,7 +9,7 @@ use esp_idf_svc::http::server::ws::EspHttpWsDetachedSender;
 use esp_idf_svc::http::server::{Configuration, EspHttpServer};
 use esp_idf_sys::EspError;
 
-use racegate::app::AppState;
+use racegate::app::SystemState;
 use racegate::hal::gate::GateState;
 
 #[derive(Clone)]
@@ -54,7 +54,7 @@ impl GateSenders {
 pub struct HttpServer {
     #[allow(dead_code)]
     esp_http_server: EspHttpServer,
-    app_state: Arc<Mutex<AppState>>,
+    app_state: Arc<Mutex<SystemState>>,
     gate_senders: GateSenders,
 }
 
@@ -108,7 +108,7 @@ impl HttpServer {
 }
 
 impl racegate::svc::HttpServer for HttpServer {
-    fn set_app_state(&self, state: AppState) {
+    fn set_system_state(&self, state: SystemState) {
         self.app_state
             .try_lock()
             .as_mut()

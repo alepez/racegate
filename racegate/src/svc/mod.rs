@@ -1,5 +1,5 @@
-use crate::app::AppState;
+use crate::app::SystemState;
 
 pub trait HttpServer {
-    fn set_app_state(&self, status: AppState);
+    fn set_system_state(&self, status: SystemState);
 }
