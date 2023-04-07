@@ -67,9 +67,10 @@ impl StdRaceNode {
                 }
 
                 loop {
-                    let mut buf: [u8; 16] = [0; 16];
+                    let mut buf = [0u8; RaceNodeMessage::FRAME_SIZE];
+
                     if let Ok((number_of_bytes, src_addr)) = receiver.recv_from(&mut buf) {
-                        if number_of_bytes == 16 {
+                        if number_of_bytes == RaceNodeMessage::FRAME_SIZE {
                             let msg = RaceNodeMessage::from(buf);
                             let s = SystemState::from(&msg);
                             log::info!("{src_addr} : {:?}", s);

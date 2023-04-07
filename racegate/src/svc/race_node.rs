@@ -6,24 +6,28 @@ pub trait RaceNode {
 }
 
 pub struct RaceNodeMessage {
-    data: [u8; 16],
+    data: FrameData,
 }
 
+type FrameData = [u8; RaceNodeMessage::FRAME_SIZE];
+
 impl RaceNodeMessage {
-    pub fn data(&self) -> [u8; 16] {
+    pub const FRAME_SIZE: usize = 16;
+
+    pub fn data(&self) -> FrameData {
         self.data
     }
 }
 
-impl From<[u8; 16]> for RaceNodeMessage {
-    fn from(data: [u8; 16]) -> Self {
+impl From<FrameData> for RaceNodeMessage {
+    fn from(data: FrameData) -> Self {
         RaceNodeMessage { data }
     }
 }
 
 impl From<&SystemState> for RaceNodeMessage {
     fn from(system_state: &SystemState) -> Self {
-        let data: [u8; 16] = [
+        let data: FrameData = [
             0, // reserved, id
             system_state.gate_state as u8,
             0,
