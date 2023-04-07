@@ -23,6 +23,14 @@ To build, flash and see logs, you can use `cargo espflash`:
 cargo espflash --speed 1500000 --monitor /dev/ttyACM0
 ```
 
+If the firmware does not fit the flash, you can use a more generous partition
+table:
+
+```shell
+cargo espflash --speed 1500000 --monitor /dev/ttyACM0 \
+  --partition-table partitions/partitions_singleapp_4MB.csv
+```
+
 For a release build, just add `--release`
 
 ```shell
