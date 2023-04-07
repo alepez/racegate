@@ -24,27 +24,6 @@ struct Services<'a> {
     platform: &'a dyn Platform,
 }
 
-#[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
-struct InitAppState {
-    is_wifi_connected: bool,
-    gate_state: GateState,
-    button_state: ButtonState,
-}
-
-impl InitAppState {
-    pub fn update(&mut self, services: &Services) -> AppState {
-        let is_wifi_connected = services.platform.wifi().is_connected();
-        let gate_state = services.platform.gate().state();
-        let button_state = services.platform.button().state();
-
-        AppState::Init(InitAppState {
-            is_wifi_connected,
-            gate_state,
-            button_state,
-        })
-    }
-}
-
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 enum AppState {
     Init(InitAppState),
@@ -115,6 +94,27 @@ impl<'a> LedController<'a> {
         };
 
         self.led.set_color(RgbLedColor::from(color));
+    }
+}
+
+#[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
+struct InitAppState {
+    is_wifi_connected: bool,
+    gate_state: GateState,
+    button_state: ButtonState,
+}
+
+impl InitAppState {
+    pub fn update(&mut self, services: &Services) -> AppState {
+        let is_wifi_connected = services.platform.wifi().is_connected();
+        let gate_state = services.platform.gate().state();
+        let button_state = services.platform.button().state();
+
+        AppState::Init(InitAppState {
+            is_wifi_connected,
+            gate_state,
+            button_state,
+        })
     }
 }
 
