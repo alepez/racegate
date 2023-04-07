@@ -74,18 +74,18 @@ impl RaceNode for EspRaceNode {
 }
 
 #[derive(Clone, Default)]
-struct NodeState {
+struct NodesState {
     start: Option<SystemState>,
     finish: Option<SystemState>,
     this: Option<SystemState>,
 }
 
 #[derive(Clone)]
-struct SharedNodeState(Arc<Mutex<NodeState>>);
+struct SharedNodeState(Arc<Mutex<NodesState>>);
 
 impl Default for SharedNodeState {
     fn default() -> Self {
-        SharedNodeState(Arc::new(Mutex::new(NodeState::default())))
+        SharedNodeState(Arc::new(Mutex::new(NodesState::default())))
     }
 }
 
