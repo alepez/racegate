@@ -10,50 +10,46 @@ use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::wifi::WifiWait;
 
-use crate::hal::wifi::{Wifi, WifiConfig};
+use racegate::hal::wifi::{Wifi, WifiConfig};
 
 pub struct EspWifi {
     esp_wifi: RefCell<esp_idf_svc::wifi::EspWifi<'static>>,
     sys_loop: EspSystemEventLoop,
 }
 
-impl TryInto<Configuration> for &WifiConfig<'_> {
-    type Error = anyhow::Error;
+fn to_esp_wifi_config(src: &WifiConfig) -> anyhow::Result<Configuration> {
+    let &WifiConfig { ap, ssid, password } = src;
 
-    fn try_into(self) -> anyhow::Result<Configuration> {
-        let &WifiConfig { ap, ssid, password } = self;
+    if ssid.is_empty() {
+        bail!("Wi-Fi SSID must be non-empty")
+    }
 
-        if ssid.is_empty() {
-            bail!("Wi-Fi SSID must be non-empty")
-        }
+    let auth_method = if password.is_empty() {
+        log::info!("Wi-Fi password is empty. Authentication is disabled.");
+        AuthMethod::None
+    } else {
+        AuthMethod::WPA2Personal
+    };
 
-        let auth_method = if password.is_empty() {
-            log::info!("Wi-Fi password is empty. Authentication is disabled.");
-            AuthMethod::None
-        } else {
-            AuthMethod::WPA2Personal
+    if ap {
+        let config = AccessPointConfiguration {
+            ssid: ssid.into(),
+            password: password.into(),
+            auth_method,
+            ..Default::default()
         };
 
-        if ap {
-            let config = AccessPointConfiguration {
-                ssid: ssid.into(),
-                password: password.into(),
-                auth_method,
-                ..Default::default()
-            };
+        Ok(Configuration::AccessPoint(config))
+    } else {
+        let config = ClientConfiguration {
+            ssid: ssid.into(),
+            password: password.into(),
+            channel: Default::default(),
+            auth_method,
+            ..Default::default()
+        };
 
-            Ok(Configuration::AccessPoint(config))
-        } else {
-            let config = ClientConfiguration {
-                ssid: ssid.into(),
-                password: password.into(),
-                channel: Default::default(),
-                auth_method,
-                ..Default::default()
-            };
-
-            Ok(Configuration::Client(config))
-        }
+        Ok(Configuration::Client(config))
     }
 }
 
@@ -72,7 +68,7 @@ impl EspWifi {
 impl Wifi for EspWifi {
     fn setup(&self, config: &WifiConfig) -> anyhow::Result<()> {
         let is_access_point = config.ap;
-        let config = config.try_into()?;
+        let config = to_esp_wifi_config(config)?;
 
         let mut esp_wifi = self.esp_wifi.try_borrow_mut()?;
 

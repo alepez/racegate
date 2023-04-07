@@ -9,8 +9,8 @@ use esp_idf_svc::http::server::ws::EspHttpWsDetachedSender;
 use esp_idf_svc::http::server::{Configuration, EspHttpServer};
 use esp_idf_sys::EspError;
 
-use crate::app::AppState;
-use crate::hal::gate::GateStatus;
+use racegate::app::AppState;
+use racegate::hal::gate::GateStatus;
 
 #[derive(Clone)]
 struct GateSenders(Arc<Mutex<VecDeque<EspHttpWsDetachedSender>>>);
@@ -107,7 +107,7 @@ impl HttpServer {
     }
 }
 
-impl crate::svc::HttpServer for HttpServer {
+impl racegate::svc::HttpServer for HttpServer {
     fn set_app_state(&self, state: AppState) {
         self.app_state
             .try_lock()
@@ -125,5 +125,5 @@ impl crate::svc::HttpServer for HttpServer {
 }
 
 fn index_html() -> &'static [u8] {
-    include_bytes!("../../assets/index.html")
+    include_bytes!("../../../racegate-ui/assets/index.html")
 }

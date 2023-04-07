@@ -1,6 +1,6 @@
 use esp_idf_hal::gpio::{AnyInputPin, Input, PinDriver};
 
-use crate::hal::gate::{Gate, GateStatus};
+use racegate::hal::gate::{Gate, GateStatus};
 
 pub struct EspGate {
     input: PinDriver<'static, AnyInputPin, Input>,

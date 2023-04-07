@@ -5,18 +5,27 @@ use crate::drivers::gate::EspGate;
 use crate::drivers::http::HttpServer as EspHttpServer;
 use crate::drivers::rgb_led::WS2812RgbLed;
 use crate::drivers::wifi::EspWifi;
-use crate::hal::gate::Gate;
-use crate::hal::rgb_led::RgbLed;
-use crate::hal::wifi::Wifi;
-use crate::hal::Platform;
-use crate::platform::Config;
-use crate::svc::HttpServer;
+use racegate::hal::gate::Gate;
+use racegate::hal::rgb_led::RgbLed;
+use racegate::hal::wifi::{Wifi, WifiConfig};
+use racegate::hal::Platform;
+use racegate::svc::HttpServer;
+
+pub enum BoardType {
+    M5StampC3,
+    RustDevKit,
+}
 
 pub struct PlatformImpl {
     wifi: EspWifi,
     rgb_led: WS2812RgbLed,
     gate: EspGate,
     http_server: EspHttpServer,
+}
+
+pub struct Config {
+    pub wifi: WifiConfig<'static>,
+    pub board_type: BoardType,
 }
 
 impl PlatformImpl {
@@ -27,8 +36,13 @@ impl PlatformImpl {
         wifi.setup(&config.wifi).expect("Cannot setup Wi-Fi");
 
         let rgb_led = WS2812RgbLed::default();
-        let gate =
-            EspGate::new(peripherals.pins.gpio3.downgrade_input()).expect("Cannot setup gate");
+
+        let gate_pin = match config.board_type {
+            BoardType::M5StampC3 => peripherals.pins.gpio3.downgrade_input(),
+            BoardType::RustDevKit => peripherals.pins.gpio9.downgrade_input(),
+        };
+
+        let gate = EspGate::new(gate_pin).expect("Cannot setup gate");
         let http_server = EspHttpServer::new().expect("Cannot setup http server");
 
         Self {
