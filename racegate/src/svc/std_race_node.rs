@@ -12,23 +12,45 @@ pub struct StdRaceNode {
     state: SharedNodeState,
 }
 
+struct StdRaceNodeConfig {
+    sender_addr: SocketAddr,
+    receiver_addr: SocketAddr,
+    broadcast_addr: SocketAddr,
+}
+
+impl Default for StdRaceNodeConfig {
+    fn default() -> Self {
+        Self {
+            sender_addr: "0.0.0.0:0".parse().unwrap(),
+            receiver_addr: "0.0.0.0:6699".parse().unwrap(),
+            broadcast_addr: "255.255.255.255:6699".parse().unwrap(),
+        }
+    }
+}
+
 impl StdRaceNode {
     pub fn new() -> anyhow::Result<Self> {
+        Self::new_with_config(StdRaceNodeConfig::default())
+    }
+
+    fn new_with_config(config: StdRaceNodeConfig) -> anyhow::Result<Self> {
+        let StdRaceNodeConfig {
+            sender_addr,
+            receiver_addr,
+            broadcast_addr,
+        } = config;
+
         let state = SharedNodeState::default();
         let state_copy = state.clone();
 
         log::info!("Starting race node");
 
-        let sender_addr: SocketAddr = "0.0.0.0:0".parse()?;
         let sender = UdpSocket::bind(sender_addr)?;
         sender.set_broadcast(true)?;
 
-        let receiver_addr: SocketAddr = "0.0.0.0:6699".parse()?;
         let receiver = UdpSocket::bind(receiver_addr)?;
         receiver.set_broadcast(true)?;
         receiver.set_read_timeout(Some(Duration::from_millis(40)))?;
-
-        let broadcast_addr: SocketAddr = "255.255.255.255:6699".parse()?;
 
         let thread = std::thread::Builder::new()
             .stack_size(64 * 1024)
@@ -73,7 +95,7 @@ impl RaceNode for StdRaceNode {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Default)]
 struct NodesState {
     start: Option<SystemState>,
     finish: Option<SystemState>,
@@ -98,5 +120,41 @@ impl TryFrom<SharedNodeState> for RaceNodeMessage {
             .and_then(|x| x.this)
             .map(|x| RaceNodeMessage::from(&x))
             .ok_or(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::svc::std_race_node::StdRaceNodeConfig;
+    use crate::svc::StdRaceNode;
+    use std::time::Duration;
+
+    fn start_config() -> StdRaceNodeConfig {
+        StdRaceNodeConfig {
+            sender_addr: "127.0.0.1:0".parse().unwrap(),
+            receiver_addr: "127.0.0.1:6699".parse().unwrap(),
+            broadcast_addr: "127.0.0.255:6699".parse().unwrap(),
+        }
+    }
+
+    fn finish_config() -> StdRaceNodeConfig {
+        StdRaceNodeConfig {
+            sender_addr: "127.0.0.2:0".parse().unwrap(),
+            receiver_addr: "127.0.0.2:6699".parse().unwrap(),
+            broadcast_addr: "127.0.0.255:6699".parse().unwrap(),
+        }
+    }
+
+    #[test]
+    fn test_node_can_be_created_with_default_config() {
+        let node = StdRaceNode::new();
+        assert!(node.is_ok());
+    }
+
+    #[test]
+    fn test_two_nodes_can_talk() {
+        let start_node = StdRaceNode::new_with_config(start_config());
+        let finish_node = StdRaceNode::new_with_config(finish_config());
+        std::thread::sleep(Duration::from_secs(5));
     }
 }
