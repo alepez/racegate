@@ -12,7 +12,10 @@ pub struct SystemState {
 impl From<&AppState> for SystemState {
     fn from(value: &AppState) -> Self {
         match value {
-            AppState::Init(x) => SystemState {
+            AppState::Init(_) => SystemState {
+                gate_state: GateState::Inactive,
+            },
+            AppState::Ready(x) => SystemState {
                 gate_state: x.gate_state,
             },
         }
@@ -27,6 +30,7 @@ struct Services<'a> {
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 enum AppState {
     Init(InitAppState),
+    Ready(ReadyAppState),
 }
 
 impl Default for AppState {
@@ -59,6 +63,7 @@ impl<'a> App<'a> {
     pub fn update(&mut self) {
         let new_state = match self.state {
             AppState::Init(mut state) => state.update(&self.services),
+            AppState::Ready(mut state) => state.update(&self.services),
         };
 
         if new_state != self.state {
@@ -82,7 +87,8 @@ struct LedController<'a> {
 impl<'a> LedController<'a> {
     pub fn update(&mut self, app_state: &AppState) {
         let color = match app_state {
-            AppState::Init(state) => {
+            AppState::Init(_) => 0xFF0000,
+            AppState::Ready(state) => {
                 if state.gate_state == GateState::Active {
                     0x008080
                 } else if state.is_wifi_connected {
@@ -110,7 +116,35 @@ impl InitAppState {
         let gate_state = services.platform.gate().state();
         let button_state = services.platform.button().state();
 
-        AppState::Init(InitAppState {
+        if is_wifi_connected
+            && (button_state != ButtonState::Pressed)
+            && gate_state != GateState::Active
+        {
+            AppState::Ready(ReadyAppState {
+                is_wifi_connected,
+                gate_state,
+                button_state,
+            })
+        } else {
+            AppState::Init(*self)
+        }
+    }
+}
+
+#[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
+struct ReadyAppState {
+    is_wifi_connected: bool,
+    gate_state: GateState,
+    button_state: ButtonState,
+}
+
+impl ReadyAppState {
+    pub fn update(&mut self, services: &Services) -> AppState {
+        let is_wifi_connected = services.platform.wifi().is_connected();
+        let gate_state = services.platform.gate().state();
+        let button_state = services.platform.button().state();
+
+        AppState::Ready(ReadyAppState {
             is_wifi_connected,
             gate_state,
             button_state,

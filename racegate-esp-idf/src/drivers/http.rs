@@ -8,7 +8,6 @@ use embedded_svc::ws::FrameType;
 use esp_idf_svc::http::server::ws::EspHttpWsDetachedSender;
 use esp_idf_svc::http::server::{Configuration, EspHttpServer};
 use esp_idf_sys::EspError;
-
 use racegate::app::SystemState;
 use racegate::hal::gate::GateState;
 
@@ -114,7 +113,6 @@ impl racegate::svc::HttpServer for HttpServer {
             .as_mut()
             .map(|x| {
                 if state.gate_state != x.gate_state {
-                    log::info!("gate changed");
                     self.gate_senders.send(state.gate_state);
                 }
 
