@@ -3,6 +3,8 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
+use anyhow::{anyhow, bail};
+
 use crate::app::SystemState;
 use crate::svc::{RaceNode, RaceNodeMessage};
 
@@ -44,56 +46,63 @@ impl StdRaceNode {
 
         log::info!("Starting race node");
 
-        let sender = Self::make_sender(sender_addr)?;
-        let receiver = Self::make_receiver(receiver_addr)?;
+        let sender = make_sender(sender_addr)?;
+        let receiver = make_receiver(receiver_addr)?;
 
-        let thread = Self::spawn_thread(broadcast_addr, state.clone(), sender, receiver);
+        let thread = spawn_thread(broadcast_addr, state.clone(), sender, receiver);
 
         Ok(StdRaceNode { thread, state })
     }
+}
 
-    fn spawn_thread(
-        broadcast_addr: SocketAddr,
-        state: SharedNodeState,
-        sender: UdpSocket,
-        receiver: UdpSocket,
-    ) -> JoinHandle<()> {
-        std::thread::Builder::new()
-            .stack_size(64 * 1024)
-            .spawn(move || loop {
-                let msg: Option<RaceNodeMessage> = state.clone().try_into().ok();
-                if let Some(msg) = msg {
-                    sender.send_to(&msg.data(), broadcast_addr).ok();
-                }
+fn spawn_thread(
+    broadcast_addr: SocketAddr,
+    state: SharedNodeState,
+    sender: UdpSocket,
+    mut receiver: UdpSocket,
+) -> JoinHandle<()> {
+    std::thread::Builder::new()
+        .stack_size(64 * 1024)
+        .spawn(move || loop {
+            let tx_msg: Option<RaceNodeMessage> = state.clone().try_into().ok();
 
-                loop {
-                    let mut buf = [0u8; RaceNodeMessage::FRAME_SIZE];
+            if let Some(tx_msg) = tx_msg {
+                sender.send_to(&tx_msg.data(), broadcast_addr).ok();
+            }
 
-                    if let Ok((number_of_bytes, src_addr)) = receiver.recv_from(&mut buf) {
-                        if number_of_bytes == RaceNodeMessage::FRAME_SIZE {
-                            let msg = RaceNodeMessage::from(buf);
-                            let s = SystemState::from(&msg);
-                            log::info!("{src_addr} : {:?}", s);
-                        }
-                    } else {
-                        break;
-                    }
-                }
-            })
-            .unwrap()
-    }
+            while let Ok(rx_msg) = receive_message(&mut receiver) {
+                let s = SystemState::from(&rx_msg);
+                log::info!("{:?}", s);
+            }
+        })
+        .unwrap()
+}
 
-    fn make_receiver(receiver_addr: SocketAddr) -> anyhow::Result<UdpSocket> {
-        let receiver = UdpSocket::bind(receiver_addr)?;
-        receiver.set_broadcast(true)?;
-        receiver.set_read_timeout(Some(Duration::from_millis(40)))?;
-        Ok(receiver)
-    }
+fn make_receiver(receiver_addr: SocketAddr) -> anyhow::Result<UdpSocket> {
+    let receiver = UdpSocket::bind(receiver_addr)?;
+    receiver.set_broadcast(true)?;
+    receiver.set_read_timeout(Some(Duration::from_millis(40)))?;
+    Ok(receiver)
+}
 
-    fn make_sender(sender_addr: SocketAddr) -> anyhow::Result<UdpSocket> {
-        let sender = UdpSocket::bind(sender_addr)?;
-        sender.set_broadcast(true)?;
-        Ok(sender)
+fn make_sender(sender_addr: SocketAddr) -> anyhow::Result<UdpSocket> {
+    let sender = UdpSocket::bind(sender_addr)?;
+    sender.set_broadcast(true)?;
+    Ok(sender)
+}
+
+fn receive_message(receiver: &mut UdpSocket) -> anyhow::Result<RaceNodeMessage> {
+    let mut buf = [0u8; RaceNodeMessage::FRAME_SIZE];
+
+    if let Ok((number_of_bytes, src_addr)) = receiver.recv_from(&mut buf) {
+        if number_of_bytes == RaceNodeMessage::FRAME_SIZE {
+            log::info!("msg from {src_addr}");
+            Ok(RaceNodeMessage::from(buf))
+        } else {
+            Err(anyhow!("Wrong number of bytes"))
+        }
+    } else {
+        Err(anyhow!("No messages"))
     }
 }
 
