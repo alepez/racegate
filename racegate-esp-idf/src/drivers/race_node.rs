@@ -19,17 +19,40 @@ impl EspRaceNode {
         let bind_addr: SocketAddr = "0.0.0.0:6699".parse()?;
         let dst_addr: SocketAddr = "255.255.255.255:6699".parse()?;
         log::info!("Starting race node at {}", bind_addr);
+
         let socket = UdpSocket::bind(bind_addr)?;
         socket.connect(dst_addr)?;
         log::info!("race node ready at {}", bind_addr);
+        socket.set_read_timeout(Some(Duration::from_millis(40)))?;
 
-        let thread = std::thread::spawn(move || loop {
-            std::thread::sleep(Duration::from_millis(40));
-            let msg: Option<RaceNodeMessage> = state_copy.clone().try_into().ok();
-            if let Some(msg) = msg {
-                socket.send(&msg.data()).ok();
-            }
-        });
+        let thread = std::thread::Builder::new()
+            .stack_size(64 * 1024)
+            .spawn(move || loop {
+                let msg: Option<RaceNodeMessage> = state_copy.clone().try_into().ok();
+                if let Some(msg) = msg {
+                    socket.send(&msg.data()).ok();
+                }
+
+                // log::info!("waiting messages from other nodes...");
+                let mut count = 0;
+                loop {
+                    let mut buf: [u8; 16] = [0; 16];
+                    if let Ok((number_of_bytes, src_addr)) = socket.recv_from(&mut buf) {
+                        count += 1;
+                        if number_of_bytes == 16 {
+                            let msg = RaceNodeMessage::from(buf);
+                            let s = SystemState::from(&msg);
+                            log::info!("{:?}", s);
+                        }
+                    } else {
+                        break;
+                    }
+                }
+                if count > 0 {
+                    log::info!("received count: {}", count);
+                }
+            })
+            .unwrap();
 
         Ok(EspRaceNode { thread, state })
     }

@@ -15,6 +15,12 @@ impl RaceNodeMessage {
     }
 }
 
+impl From<[u8; 16]> for RaceNodeMessage {
+    fn from(data: [u8; 16]) -> Self {
+        RaceNodeMessage { data }
+    }
+}
+
 impl From<&SystemState> for RaceNodeMessage {
     fn from(system_state: &SystemState) -> Self {
         let data: [u8; 16] = [
