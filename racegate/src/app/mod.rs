@@ -73,10 +73,17 @@ impl<'a> App<'a> {
 
         self.services.led_controller.update(&self.state);
 
+        let system_state = (&self.state).into();
+
         self.services
             .platform
             .http_server()
-            .set_system_state((&self.state).into());
+            .set_system_state(&system_state);
+
+        self.services
+            .platform
+            .race_node()
+            .set_system_state(&system_state);
     }
 }
 

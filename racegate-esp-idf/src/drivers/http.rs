@@ -107,7 +107,7 @@ impl HttpServer {
 }
 
 impl racegate::svc::HttpServer for HttpServer {
-    fn set_system_state(&self, state: SystemState) {
+    fn set_system_state(&self, state: &SystemState) {
         self.app_state
             .try_lock()
             .as_mut()
@@ -116,7 +116,7 @@ impl racegate::svc::HttpServer for HttpServer {
                     self.gate_senders.send(state.gate_state);
                 }
 
-                **x = state;
+                **x = *state;
             })
             .ok();
     }
