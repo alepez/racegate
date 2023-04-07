@@ -1,5 +1,8 @@
 pub trait Gate {
-    fn is_active(&self) -> bool;
+    fn is_active(&self) -> bool {
+        self.state() == GateState::Active
+    }
+
     fn state(&self) -> GateState;
 }
 
