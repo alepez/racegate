@@ -108,14 +108,16 @@ fn spawn_thread(
                 let tx_msg: Option<RaceNodeMessage> = state.clone().try_into().ok();
 
                 if let Some(tx_msg) = tx_msg {
-                    if sender.send_to(&tx_msg.data(), broadcast_addr).is_ok() {
+                    if sender
+                        .send_to(&tx_msg.data().as_bytes(), broadcast_addr)
+                        .is_ok()
+                    {
                         stats.tx_count += 1;
                     }
                 }
 
                 while let Ok(rx_msg) = receive_message(&mut receiver) {
-                    let s = SystemState::from(&rx_msg);
-                    log::info!("{:?}", s);
+                    log::info!("{:?}", rx_msg);
                     stats.rx_count += 1;
                 }
 
@@ -148,7 +150,7 @@ fn receive_message(receiver: &mut UdpSocket) -> anyhow::Result<RaceNodeMessage> 
 
     if let Ok((number_of_bytes, _src_addr)) = receiver.recv_from(&mut buf) {
         if number_of_bytes == RaceNodeMessage::FRAME_SIZE {
-            Ok(RaceNodeMessage::from(buf))
+            RaceNodeMessage::try_from(buf).map_err(|_| anyhow!("Cannot parse"))
         } else {
             Err(anyhow!("Wrong number of bytes"))
         }
@@ -192,7 +194,7 @@ impl TryFrom<SharedNodeState> for RaceNodeMessage {
         x.0.try_lock()
             .ok()
             .and_then(|x| x.this)
-            .map(|x| RaceNodeMessage::from(&x))
+            .map(RaceNodeMessage::SystemState)
             .ok_or(())
     }
 }
