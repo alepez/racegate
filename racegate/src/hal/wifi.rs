@@ -13,10 +13,10 @@ pub struct WifiConfig<'a> {
 
 impl WifiConfig<'_> {
     fn try_from_str(s: &'static str) -> Result<Self, ()> {
-        let mut iter = s.split_terminator(":");
-        let ap: bool = iter.next().ok_or_else(|| ())?.parse().or(Err(()))?;
-        let ssid: &str = iter.next().ok_or_else(|| ())?;
-        let password: &str = iter.next().ok_or_else(|| ())?;
+        let mut iter = s.split_terminator(':');
+        let ap: bool = iter.next().ok_or(())?.parse().or(Err(()))?;
+        let ssid: &str = iter.next().ok_or(())?;
+        let password: &str = iter.next().ok_or(())?;
         Ok(WifiConfig { ap, ssid, password })
     }
 
