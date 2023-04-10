@@ -7,3 +7,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1"
 log = "0.4"
+
+[dev-dependencies]
+test-log = "0.2"
+env_logger = "0.10.0"

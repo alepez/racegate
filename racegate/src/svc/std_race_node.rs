@@ -1,17 +1,25 @@
 use std::net::{SocketAddr, UdpSocket};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-use anyhow::{anyhow, bail};
+use anyhow::anyhow;
 
 use crate::app::SystemState;
 use crate::svc::{RaceNode, RaceNodeMessage};
 
+#[derive(Default, Debug)]
+struct Stats {
+    tx_count: usize,
+    rx_count: usize,
+}
+
 pub struct StdRaceNode {
     #[allow(dead_code)]
-    thread: JoinHandle<()>,
+    thread: Option<JoinHandle<Stats>>,
     state: SharedNodeState,
+    continue_running: Arc<AtomicBool>,
 }
 
 struct StdRaceNodeConfig {
@@ -49,9 +57,38 @@ impl StdRaceNode {
         let sender = make_sender(sender_addr)?;
         let receiver = make_receiver(receiver_addr)?;
 
-        let thread = spawn_thread(broadcast_addr, state.clone(), sender, receiver);
+        let continue_running = Arc::new(AtomicBool::new(true));
+        let thread = spawn_thread(
+            broadcast_addr,
+            state.clone(),
+            sender,
+            receiver,
+            continue_running.clone(),
+        );
 
-        Ok(StdRaceNode { thread, state })
+        Ok(StdRaceNode {
+            thread: Some(thread),
+            state,
+            continue_running,
+        })
+    }
+
+    fn stop(&mut self) -> Option<Stats> {
+        self.continue_running.store(false, Ordering::Release);
+
+        if let Some(thread) = self.thread.take() {
+            thread.join().ok()
+        } else {
+            None
+        }
+    }
+}
+
+impl Drop for StdRaceNode {
+    fn drop(&mut self) {
+        if let Some(stats) = self.stop() {
+            log::debug!("stats: {:?}", stats);
+        }
     }
 }
 
@@ -60,20 +97,33 @@ fn spawn_thread(
     state: SharedNodeState,
     sender: UdpSocket,
     mut receiver: UdpSocket,
-) -> JoinHandle<()> {
+    continue_running: Arc<AtomicBool>,
+) -> JoinHandle<Stats> {
     std::thread::Builder::new()
         .stack_size(64 * 1024)
-        .spawn(move || loop {
-            let tx_msg: Option<RaceNodeMessage> = state.clone().try_into().ok();
+        .spawn(move || {
+            let mut stats = Stats::default();
 
-            if let Some(tx_msg) = tx_msg {
-                sender.send_to(&tx_msg.data(), broadcast_addr).ok();
-            }
+            loop {
+                let tx_msg: Option<RaceNodeMessage> = state.clone().try_into().ok();
 
-            while let Ok(rx_msg) = receive_message(&mut receiver) {
-                let s = SystemState::from(&rx_msg);
-                log::info!("{:?}", s);
+                if let Some(tx_msg) = tx_msg {
+                    if sender.send_to(&tx_msg.data(), broadcast_addr).is_ok() {
+                        stats.tx_count += 1;
+                    }
+                }
+
+                while let Ok(rx_msg) = receive_message(&mut receiver) {
+                    let s = SystemState::from(&rx_msg);
+                    log::info!("{:?}", s);
+                    stats.rx_count += 1;
+                }
+
+                if !continue_running.load(Ordering::Acquire) {
+                    break;
+                }
             }
+            stats
         })
         .unwrap()
 }
@@ -82,21 +132,22 @@ fn make_receiver(receiver_addr: SocketAddr) -> anyhow::Result<UdpSocket> {
     let receiver = UdpSocket::bind(receiver_addr)?;
     receiver.set_broadcast(true)?;
     receiver.set_read_timeout(Some(Duration::from_millis(40)))?;
+    log::info!("receiver {:?}", receiver.local_addr());
     Ok(receiver)
 }
 
 fn make_sender(sender_addr: SocketAddr) -> anyhow::Result<UdpSocket> {
     let sender = UdpSocket::bind(sender_addr)?;
     sender.set_broadcast(true)?;
+    log::info!("sender {:?}", sender.local_addr());
     Ok(sender)
 }
 
 fn receive_message(receiver: &mut UdpSocket) -> anyhow::Result<RaceNodeMessage> {
     let mut buf = [0u8; RaceNodeMessage::FRAME_SIZE];
 
-    if let Ok((number_of_bytes, src_addr)) = receiver.recv_from(&mut buf) {
+    if let Ok((number_of_bytes, _src_addr)) = receiver.recv_from(&mut buf) {
         if number_of_bytes == RaceNodeMessage::FRAME_SIZE {
-            log::info!("msg from {src_addr}");
             Ok(RaceNodeMessage::from(buf))
         } else {
             Err(anyhow!("Wrong number of bytes"))
@@ -122,8 +173,6 @@ impl RaceNode for StdRaceNode {
 
 #[derive(Default)]
 struct NodesState {
-    start: Option<SystemState>,
-    finish: Option<SystemState>,
     this: Option<SystemState>,
 }
 
@@ -152,35 +201,51 @@ impl TryFrom<SharedNodeState> for RaceNodeMessage {
 mod tests {
     use std::time::Duration;
 
+    use crate::app::SystemState;
+    use crate::hal::gate::GateState;
     use crate::svc::std_race_node::StdRaceNodeConfig;
-    use crate::svc::StdRaceNode;
+    use crate::svc::{RaceNode, StdRaceNode};
 
     fn start_config() -> StdRaceNodeConfig {
         StdRaceNodeConfig {
-            sender_addr: "127.0.0.1:0".parse().unwrap(),
-            receiver_addr: "127.0.0.1:6699".parse().unwrap(),
-            broadcast_addr: "127.0.0.255:6699".parse().unwrap(),
+            sender_addr: "0.0.0.0:0".parse().unwrap(),
+            receiver_addr: "127.0.0.10:6699".parse().unwrap(),
+            broadcast_addr: "127.0.0.10:6698".parse().unwrap(),
         }
     }
 
     fn finish_config() -> StdRaceNodeConfig {
         StdRaceNodeConfig {
-            sender_addr: "127.0.0.2:0".parse().unwrap(),
-            receiver_addr: "127.0.0.2:6699".parse().unwrap(),
-            broadcast_addr: "127.0.0.255:6699".parse().unwrap(),
+            sender_addr: "0.0.0.0:0".parse().unwrap(),
+            receiver_addr: "127.0.0.10:6698".parse().unwrap(),
+            broadcast_addr: "127.0.0.10:6699".parse().unwrap(),
         }
     }
 
-    #[test]
-    fn test_node_can_be_created_with_default_config() {
-        let node = StdRaceNode::new();
-        assert!(node.is_ok());
-    }
-
-    #[test]
+    #[test_log::test]
     fn test_two_nodes_can_talk() {
-        let start_node = StdRaceNode::new_with_config(start_config());
-        let finish_node = StdRaceNode::new_with_config(finish_config());
-        std::thread::sleep(Duration::from_secs(5));
+        log::info!("test_two_nodes_can_talk");
+        let mut start_node = StdRaceNode::new_with_config(start_config()).unwrap();
+
+        start_node.set_system_state(&SystemState {
+            gate_state: GateState::Active,
+        });
+
+        let mut finish_node = StdRaceNode::new_with_config(finish_config()).unwrap();
+
+        finish_node.set_system_state(&SystemState {
+            gate_state: GateState::Inactive,
+        });
+
+        std::thread::sleep(Duration::from_secs(1));
+
+        let start_stats = start_node.stop().unwrap();
+        let finish_stats = finish_node.stop().unwrap();
+
+        assert!(start_stats.rx_count > 0);
+        assert!(start_stats.tx_count > 0);
+
+        assert!(finish_stats.rx_count > 0);
+        assert!(finish_stats.tx_count > 0);
     }
 }
