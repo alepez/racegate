@@ -132,7 +132,7 @@ impl TryFrom<FrameData> for GateBeacon {
 
         let last_activation_time = deserialize_u32(&data, 3).ok_or(Error::Unknown)?;
 
-        let last_activation_time = if last_activation_time == 0xFFFFFFFF {
+        let last_activation_time = if last_activation_time == 0 {
             None
         } else {
             Some(CoordinatedInstant::from_millis(last_activation_time as i32))
@@ -177,7 +177,7 @@ fn serialize_system_state(x: &GateBeacon, data: &mut FrameData) {
     if let Some(last_activation_time) = x.last_activation_time {
         serialize_u32(last_activation_time.as_millis() as u32, data, 3);
     } else {
-        serialize_u32(0xFFFFFFFF, data, 3);
+        serialize_u32(0, data, 3);
     }
 }
 
