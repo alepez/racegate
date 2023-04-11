@@ -154,9 +154,6 @@ mod tests {
         let data = msg.data();
         let data = data.as_bytes();
 
-        assert_eq!(data[0], 1u8);
-        assert_eq!(data[1], 1u8);
-        assert_eq!(data[2], 1u8);
-        assert_eq!(data[3], 0u8);
+        insta::assert_debug_snapshot!(data);
     }
 }
