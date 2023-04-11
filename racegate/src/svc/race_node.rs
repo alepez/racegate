@@ -39,6 +39,10 @@ impl NodeAddress {
         self.0 == COORDINATOR_ADDRESS.0
     }
 
+    pub const fn is_gate(&self) -> bool {
+        self.0 != COORDINATOR_ADDRESS.0
+    }
+
     pub const fn is_start(&self) -> bool {
         self.0 == START_ADDRESS.0
     }
@@ -61,6 +65,12 @@ impl NodeAddress {
         } else {
             (self.0 as usize) - 1
         }
+    }
+}
+
+impl From<u8> for NodeAddress {
+    fn from(x: u8) -> Self {
+        Self(x)
     }
 }
 

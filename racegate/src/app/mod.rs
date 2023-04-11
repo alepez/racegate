@@ -74,7 +74,7 @@ impl<'a> App<'a> {
         };
 
         if new_state != self.state {
-            log::info!("{:?}", &new_state);
+            // log::info!("{:?}", &new_state);
             self.state = new_state;
         }
 
@@ -121,15 +121,18 @@ impl InitState {
         let gate_state = services.platform.gate().state();
         let button_state = services.platform.button().state();
         let local_time = services.local_clock.now().expect("Cannot get time");
+        let address = services.platform.dip_switch().address();
 
-        let startup_as_gate = is_wifi_connected
+        let startup_as_gate = address.is_gate()
+            && is_wifi_connected
             && (button_state != ButtonState::Pressed)
             && gate_state != GateState::Active;
 
-        /* Coordinator gate is always active at startup */
-        let startup_as_coordinator = is_wifi_connected
+        /* Coordinator is selected by dip switch */
+        let startup_as_coordinator = address.is_coordinator()
+            && is_wifi_connected
             && (button_state != ButtonState::Pressed)
-            && gate_state == GateState::Active;
+            && gate_state != GateState::Active;
 
         if startup_as_gate {
             log::info!("This is a gate");
@@ -247,6 +250,7 @@ impl GateReadyState {
         let clock_offset = self.clock_offset;
         let clock = CoordinatedClock::new(&services.local_clock, clock_offset);
         let coordinated_time = clock.now();
+        let addr = services.platform.dip_switch().address();
 
         let last_activation_time = if gate_state == GateState::Active {
             Some(coordinated_time)
@@ -255,7 +259,7 @@ impl GateReadyState {
         };
 
         let beacon = GateBeacon {
-            addr: NodeAddress::start(), // TODO
+            addr,
             state: gate_state,
             last_activation_time,
         };
