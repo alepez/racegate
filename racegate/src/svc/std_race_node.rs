@@ -7,7 +7,7 @@ use std::time::Duration;
 use anyhow::anyhow;
 
 use crate::app::SystemState;
-use crate::svc::race_node::FrameData;
+use crate::svc::race_node::{AddressedSystemState, FrameData, NodeAddress};
 use crate::svc::{RaceNode, RaceNodeMessage};
 
 #[derive(Default, Debug)]
@@ -106,11 +106,11 @@ fn spawn_thread(
             let mut stats = Stats::default();
 
             loop {
-                let tx_msg: Option<RaceNodeMessage> = state.clone().try_into().ok();
+                let tx_msg = system_state_to_msg(state.clone());
 
                 if let Some(tx_msg) = tx_msg {
                     if sender
-                        .send_to(&tx_msg.data().as_bytes(), broadcast_addr)
+                        .send_to(tx_msg.data().as_bytes(), broadcast_addr)
                         .is_ok()
                     {
                         stats.tx_count += 1;
@@ -173,10 +173,20 @@ impl RaceNode for StdRaceNode {
             })
             .ok();
     }
+
+    fn set_node_address(&self, node_addr: NodeAddress) {
+        self.state
+            .0
+            .try_lock()
+            .as_mut()
+            .map(|x| x.addr = Some(node_addr))
+            .ok();
+    }
 }
 
 #[derive(Default)]
 struct NodesState {
+    addr: Option<NodeAddress>,
     this: Option<SystemState>,
 }
 
@@ -189,16 +199,16 @@ impl Default for SharedNodeState {
     }
 }
 
-impl TryFrom<SharedNodeState> for RaceNodeMessage {
-    type Error = ();
+fn system_state_to_msg(state: SharedNodeState) -> Option<RaceNodeMessage> {
+    let state = state.0.try_lock().ok()?;
+    let addr = state.addr?;
+    let system_state = state.this?;
+    let state = AddressedSystemState {
+        addr,
+        state: system_state,
+    };
 
-    fn try_from(x: SharedNodeState) -> Result<Self, Self::Error> {
-        x.0.try_lock()
-            .ok()
-            .and_then(|x| x.this)
-            .map(RaceNodeMessage::SystemState)
-            .ok_or(())
-    }
+    Some(RaceNodeMessage::SystemState(state))
 }
 
 #[cfg(test)]
@@ -207,10 +217,11 @@ mod tests {
 
     use crate::app::SystemState;
     use crate::hal::gate::GateState;
+    use crate::svc::race_node::NodeAddress;
     use crate::svc::std_race_node::StdRaceNodeConfig;
     use crate::svc::{RaceNode, StdRaceNode};
 
-    fn start_config() -> StdRaceNodeConfig {
+    fn coordinator_config() -> StdRaceNodeConfig {
         StdRaceNodeConfig {
             sender_addr: "0.0.0.0:0".parse().unwrap(),
             receiver_addr: "127.0.0.10:6699".parse().unwrap(),
@@ -218,7 +229,7 @@ mod tests {
         }
     }
 
-    fn finish_config() -> StdRaceNodeConfig {
+    fn start_config() -> StdRaceNodeConfig {
         StdRaceNodeConfig {
             sender_addr: "0.0.0.0:0".parse().unwrap(),
             receiver_addr: "127.0.0.10:6698".parse().unwrap(),
@@ -229,27 +240,31 @@ mod tests {
     #[test_log::test]
     fn test_two_nodes_can_talk() {
         log::info!("test_two_nodes_can_talk");
-        let mut start_node = StdRaceNode::new_with_config(start_config()).unwrap();
+        let mut coordinator_node = StdRaceNode::new_with_config(coordinator_config()).unwrap();
 
-        start_node.set_system_state(&SystemState {
+        coordinator_node.set_system_state(&SystemState {
             gate_state: GateState::Active,
         });
 
-        let mut finish_node = StdRaceNode::new_with_config(finish_config()).unwrap();
+        coordinator_node.set_node_address(NodeAddress::coordinator());
 
-        finish_node.set_system_state(&SystemState {
+        let mut start_node = StdRaceNode::new_with_config(start_config()).unwrap();
+
+        start_node.set_system_state(&SystemState {
             gate_state: GateState::Inactive,
         });
 
+        start_node.set_node_address(NodeAddress::start());
+
         std::thread::sleep(Duration::from_secs(1));
 
+        let coordinator_stats = coordinator_node.stop().unwrap();
         let start_stats = start_node.stop().unwrap();
-        let finish_stats = finish_node.stop().unwrap();
+
+        assert!(coordinator_stats.rx_count > 0);
+        assert!(coordinator_stats.tx_count > 0);
 
         assert!(start_stats.rx_count > 0);
         assert!(start_stats.tx_count > 0);
-
-        assert!(finish_stats.rx_count > 0);
-        assert!(finish_stats.tx_count > 0);
     }
 }

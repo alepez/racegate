@@ -7,6 +7,37 @@ pub enum Error {
 
 pub trait RaceNode {
     fn set_system_state(&self, status: &SystemState);
+
+    fn set_node_address(&self, node_id: NodeAddress);
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct NodeAddress(u8);
+
+impl NodeAddress {
+    pub fn coordinator() -> Self {
+        Self(0)
+    }
+
+    pub fn start() -> Self {
+        Self(1)
+    }
+
+    pub fn finish() -> Self {
+        Self(32)
+    }
+
+    pub fn is_coordinator(&self) -> bool {
+        self.0 == 0
+    }
+
+    pub fn is_start(&self) -> bool {
+        self.0 == 1
+    }
+
+    pub fn is_finish(&self) -> bool {
+        self.0 == 32
+    }
 }
 
 pub struct FrameData([u8; RaceNodeMessage::FRAME_SIZE]);
@@ -23,9 +54,15 @@ impl From<[u8; 16]> for FrameData {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+pub struct AddressedSystemState {
+    pub addr: NodeAddress,
+    pub state: SystemState,
+}
+
 #[derive(Debug)]
 pub enum RaceNodeMessage {
-    SystemState(SystemState),
+    SystemState(AddressedSystemState),
 }
 
 impl RaceNodeMessage {
@@ -44,28 +81,40 @@ impl TryFrom<FrameData> for RaceNodeMessage {
     fn try_from(data: FrameData) -> Result<RaceNodeMessage, Error> {
         let msg_id = data.0.first().ok_or(Error::Unknown)?;
         match msg_id {
-            1 => Ok(RaceNodeMessage::SystemState(SystemState::try_from(data)?)),
+            1 => Ok(RaceNodeMessage::SystemState(
+                AddressedSystemState::try_from(data)?,
+            )),
             _ => Err(Error::Unknown),
         }
     }
 }
 
-impl TryFrom<FrameData> for SystemState {
+impl TryFrom<FrameData> for AddressedSystemState {
     type Error = Error;
 
-    fn try_from(data: FrameData) -> Result<SystemState, Error> {
-        let gate_state = match data.0.get(1) {
+    fn try_from(data: FrameData) -> Result<AddressedSystemState, Error> {
+        let addr = data.0.get(1).ok_or(Error::Unknown)?;
+        let addr = NodeAddress(*addr);
+
+        let gate_state = match data.0.get(2) {
             Some(0) => Inactive,
             Some(1) => Active,
             _ => Inactive,
         };
 
-        Ok(SystemState { gate_state })
+        let state = SystemState { gate_state };
+
+        Ok(AddressedSystemState { addr, state })
     }
 }
 
-impl From<&SystemState> for FrameData {
-    fn from(value: &SystemState) -> Self {
+fn serialize_system_state(x: &AddressedSystemState, data: &mut FrameData) {
+    data.0[1] = x.addr.0;
+    data.0[2] = x.state.gate_state as u8;
+}
+
+impl From<&AddressedSystemState> for FrameData {
+    fn from(value: &AddressedSystemState) -> Self {
         FrameData::from(&RaceNodeMessage::SystemState(*value))
     }
 }
@@ -86,6 +135,28 @@ impl From<&RaceNodeMessage> for FrameData {
     }
 }
 
-fn serialize_system_state(x: &SystemState, data: &mut FrameData) {
-    data.0[1] = x.gate_state as u8;
+#[cfg(test)]
+mod tests {
+    use crate::hal::gate::GateState;
+
+    use super::*;
+
+    #[test]
+    fn test_serialize_system_state() {
+        let x = AddressedSystemState {
+            addr: NodeAddress::start(),
+            state: SystemState {
+                gate_state: GateState::Active,
+            },
+        };
+
+        let msg = RaceNodeMessage::SystemState(x);
+        let data = msg.data();
+        let data = data.as_bytes();
+
+        assert_eq!(data[0], 1u8);
+        assert_eq!(data[1], 1u8);
+        assert_eq!(data[2], 1u8);
+        assert_eq!(data[3], 0u8);
+    }
 }
