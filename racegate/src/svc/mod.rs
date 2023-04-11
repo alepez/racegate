@@ -1,5 +1,5 @@
 pub use clock::{
-    calculate_clock_offset, AdjustedClock, AdjustedInstant, Clock, ClockOffset, Instant,
+    calculate_clock_offset, CoordinatedClock, CoordinatedInstant, LocalClock, LocalOffset, LocalInstant,
 };
 pub use race_node::RaceNode;
 pub use std_race_node::StdRaceNode;

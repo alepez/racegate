@@ -9,7 +9,7 @@ use std::time::Duration;
 use anyhow::anyhow;
 
 use crate::svc::race_node::{FrameData, RaceNode, RaceNodeMessage};
-use crate::svc::Instant;
+use crate::svc::LocalInstant;
 
 #[derive(Default, Debug)]
 struct Stats {
@@ -175,7 +175,7 @@ fn receive_message(receiver: &mut UdpSocket) -> anyhow::Result<RaceNodeMessage> 
 }
 
 impl RaceNode for StdRaceNode {
-    fn coordinator_time(&self) -> Option<Instant> {
+    fn coordinator_time(&self) -> Option<LocalInstant> {
         let nodes = self.state.0.lock().ok()?;
         nodes.coordinator_time
     }
@@ -187,7 +187,7 @@ impl RaceNode for StdRaceNode {
 
 #[derive(Default)]
 struct NodesState {
-    coordinator_time: Option<Instant>,
+    coordinator_time: Option<LocalInstant>,
 }
 
 #[derive(Clone)]
@@ -215,7 +215,7 @@ mod tests {
 
     use crate::svc::race_node::{CoordinatorBeacon, RaceNode};
     use crate::svc::std_race_node::StdRaceNodeConfig;
-    use crate::svc::{Instant, StdRaceNode};
+    use crate::svc::{LocalInstant, StdRaceNode};
 
     fn make_coordinator_node() -> StdRaceNode {
         // Broadcast does not work on localhost, so we just use different ports
@@ -255,7 +255,7 @@ mod tests {
         coordinator_node
             .publish(
                 CoordinatorBeacon {
-                    time: Instant::from_millis(123),
+                    time: LocalInstant::from_millis(123),
                 }
                 .into(),
             )

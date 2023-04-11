@@ -9,7 +9,7 @@ GateBeacon(
         ),
         state: SystemState {
             gate_state: Active,
-            time: Instant(
+            time: LocalInstant(
                 12345,
             ),
         },

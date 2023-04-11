@@ -1,6 +1,6 @@
 use crate::app::SystemState;
 use crate::hal::gate::GateState::{Active, Inactive};
-use crate::svc::clock::Instant;
+use crate::svc::clock::LocalInstant;
 
 #[derive(Debug)]
 pub enum Error {
@@ -8,7 +8,7 @@ pub enum Error {
 }
 
 pub trait RaceNode {
-    fn coordinator_time(&self) -> Option<Instant>;
+    fn coordinator_time(&self) -> Option<LocalInstant>;
 
     fn publish(&self, msg: RaceNodeMessage) -> anyhow::Result<()>;
 }
@@ -64,7 +64,7 @@ pub struct GateBeacon {
 
 #[derive(Debug, Copy, Clone)]
 pub struct CoordinatorBeacon {
-    pub time: Instant,
+    pub time: LocalInstant,
 }
 
 #[derive(Debug)]
@@ -107,7 +107,7 @@ impl TryFrom<FrameData> for GateBeacon {
             _ => Inactive,
         };
 
-        let time = Instant::from_millis(deserialize_u32(&data, 3).ok_or(Error::Unknown)? as i32);
+        let time = LocalInstant::from_millis(deserialize_u32(&data, 3).ok_or(Error::Unknown)? as i32);
 
         let state = SystemState { gate_state, time };
 
@@ -119,7 +119,7 @@ impl TryFrom<FrameData> for CoordinatorBeacon {
     type Error = Error;
 
     fn try_from(data: FrameData) -> Result<CoordinatorBeacon, Error> {
-        let time = Instant::from_millis(deserialize_u32(&data, 1).ok_or(Error::Unknown)? as i32);
+        let time = LocalInstant::from_millis(deserialize_u32(&data, 1).ok_or(Error::Unknown)? as i32);
 
         Ok(CoordinatorBeacon { time })
     }
@@ -200,7 +200,7 @@ mod tests {
             addr: NodeAddress::start(),
             state: SystemState {
                 gate_state: GateState::Active,
-                time: Instant::from_millis(12345),
+                time: LocalInstant::from_millis(12345),
             },
         };
 
@@ -214,7 +214,7 @@ mod tests {
     #[test]
     fn test_serialize_coordinator_beacon() {
         let x = CoordinatorBeacon {
-            time: Instant::from_millis(2_123_456_789),
+            time: LocalInstant::from_millis(2_123_456_789),
         };
 
         let msg = RaceNodeMessage::CoordinatorBeacon(x);

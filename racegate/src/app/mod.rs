@@ -5,19 +5,20 @@ use crate::hal::rgb_led::RgbLedColor;
 use crate::hal::Platform;
 use crate::svc::race_node::*;
 use crate::svc::{
-    calculate_clock_offset, AdjustedClock, AdjustedInstant, Clock, ClockOffset, Instant,
+    calculate_clock_offset, LocalOffset, CoordinatedClock, CoordinatedInstant, LocalClock,
+    LocalInstant,
 };
 
 #[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
 pub struct SystemState {
     pub gate_state: GateState,
-    pub time: Instant,
+    pub time: LocalInstant,
 }
 
 struct Services<'a> {
     led_controller: LedController<'a>,
     platform: &'a dyn Platform,
-    local_clock: Clock,
+    local_clock: LocalClock,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
@@ -45,7 +46,7 @@ impl<'a> App<'a> {
             led: platform.rgb_led(),
         };
 
-        let race_clock = Clock::default();
+        let race_clock = LocalClock::default();
 
         let services = Services {
             led_controller,
@@ -111,7 +112,7 @@ struct InitState {
     is_wifi_connected: bool,
     gate_state: GateState,
     button_state: ButtonState,
-    time: Instant,
+    time: LocalInstant,
 }
 
 impl InitState {
@@ -151,7 +152,7 @@ impl InitState {
 #[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
 struct CoordinatorReadyState {
     is_wifi_connected: bool,
-    time: Instant,
+    time: LocalInstant,
 }
 
 impl CoordinatorReadyState {
@@ -175,7 +176,7 @@ impl CoordinatorReadyState {
 #[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
 struct GateStartupState {
     is_wifi_connected: bool,
-    time: Instant,
+    time: LocalInstant,
 }
 
 impl GateStartupState {
@@ -192,7 +193,7 @@ impl GateStartupState {
 
         if let Some(clock_offset) = clock_offset {
             log::info!("Gate is ready, offset: {}ms", clock_offset.as_millis());
-            let clock = AdjustedClock::new(&services.local_clock, clock_offset);
+            let clock = CoordinatedClock::new(&services.local_clock, clock_offset);
             let adjusted_time = clock.now();
             AppState::GateReady(GateReadyState {
                 is_wifi_connected,
@@ -213,8 +214,8 @@ impl GateStartupState {
 struct GateReadyState {
     is_wifi_connected: bool,
     gate_state: GateState,
-    clock_offset: ClockOffset,
-    adjusted_time: AdjustedInstant,
+    clock_offset: LocalOffset,
+    adjusted_time: CoordinatedInstant,
 }
 
 impl GateReadyState {
@@ -223,7 +224,7 @@ impl GateReadyState {
         let gate_state = services.platform.gate().state();
         let time = services.local_clock.now().expect("Cannot get time");
         let clock_offset = self.clock_offset;
-        let clock = AdjustedClock::new(&services.local_clock, clock_offset);
+        let clock = CoordinatedClock::new(&services.local_clock, clock_offset);
         let adjusted_time = clock.now();
 
         let beacon = GateBeacon {

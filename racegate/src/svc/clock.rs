@@ -1,7 +1,7 @@
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
-pub struct Instant(i32);
+pub struct LocalInstant(i32);
 
-impl Instant {
+impl LocalInstant {
     pub fn from_millis(ms: i32) -> Self {
         Self(ms)
     }
@@ -11,11 +11,11 @@ impl Instant {
     }
 }
 
-pub struct Clock {
+pub struct LocalClock {
     start: std::time::Instant,
 }
 
-impl Default for Clock {
+impl Default for LocalClock {
     fn default() -> Self {
         Self {
             start: std::time::Instant::now(),
@@ -23,14 +23,14 @@ impl Default for Clock {
     }
 }
 
-impl Clock {
-    pub fn now(&self) -> Option<Instant> {
+impl LocalClock {
+    pub fn now(&self) -> Option<LocalInstant> {
         let t = std::time::Instant::now().checked_duration_since(self.start)?;
         let t_ms = t.as_millis();
 
         // milliseconds, 32 bits, max 24 days (enough!)
         if t_ms < (i32::MAX as u128) {
-            Some(Instant(t_ms as i32))
+            Some(LocalInstant(t_ms as i32))
         } else {
             None
         }
@@ -38,9 +38,9 @@ impl Clock {
 }
 
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
-pub struct AdjustedInstant(i32);
+pub struct CoordinatedInstant(i32);
 
-impl AdjustedInstant {
+impl CoordinatedInstant {
     pub fn from_millis(ms: i32) -> Self {
         Self(ms)
     }
@@ -50,26 +50,26 @@ impl AdjustedInstant {
     }
 }
 
-pub struct AdjustedClock<'a> {
-    clock: &'a Clock,
-    offset: ClockOffset,
+pub struct CoordinatedClock<'a> {
+    clock: &'a LocalClock,
+    offset: LocalOffset,
 }
 
-impl<'a> AdjustedClock<'a> {
-    pub fn new(clock: &'a Clock, offset: ClockOffset) -> Self {
+impl<'a> CoordinatedClock<'a> {
+    pub fn new(clock: &'a LocalClock, offset: LocalOffset) -> Self {
         Self { clock, offset }
     }
 
-    pub fn now(&self) -> AdjustedInstant {
+    pub fn now(&self) -> CoordinatedInstant {
         let t = self.clock.now().expect("Cannot get time");
-        AdjustedInstant::from_millis(t.as_millis() + self.offset.as_millis())
+        CoordinatedInstant::from_millis(t.as_millis() + self.offset.as_millis())
     }
 }
 
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
-pub struct ClockOffset(i32);
+pub struct LocalOffset(i32);
 
-impl ClockOffset {
+impl LocalOffset {
     pub fn from_millis(ms: i32) -> Self {
         Self(ms)
     }
@@ -79,10 +79,13 @@ impl ClockOffset {
     }
 }
 
-pub fn calculate_clock_offset(coordinator_time: Instant, local_time: Instant) -> ClockOffset {
+pub fn calculate_clock_offset(
+    coordinator_time: LocalInstant,
+    local_time: LocalInstant,
+) -> LocalOffset {
     let c = coordinator_time.as_millis();
     let l = local_time.as_millis();
-    ClockOffset::from_millis(c - l)
+    LocalOffset::from_millis(c - l)
 }
 
 #[cfg(test)]
@@ -91,17 +94,17 @@ mod tests {
 
     #[test]
     fn test_calculate_clock_offset_when_coordinator_started_before_gate() {
-        let coord_time = Instant::from_millis(60_000);
-        let local_time = Instant::from_millis(10_000);
+        let coord_time = LocalInstant::from_millis(60_000);
+        let local_time = LocalInstant::from_millis(10_000);
         let offset = calculate_clock_offset(coord_time, local_time);
-        assert_eq!(offset, ClockOffset::from_millis(50_000));
+        assert_eq!(offset, LocalOffset::from_millis(50_000));
     }
 
     #[test]
     fn test_calculate_clock_offset_when_coordinator_started_after_gate() {
-        let coord_time = Instant::from_millis(60_000);
-        let local_time = Instant::from_millis(110_000);
+        let coord_time = LocalInstant::from_millis(60_000);
+        let local_time = LocalInstant::from_millis(110_000);
         let offset = calculate_clock_offset(coord_time, local_time);
-        assert_eq!(offset, ClockOffset::from_millis(-50_000));
+        assert_eq!(offset, LocalOffset::from_millis(-50_000));
     }
 }
