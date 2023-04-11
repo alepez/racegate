@@ -14,29 +14,6 @@ pub struct SystemState {
     pub time: Instant,
 }
 
-impl From<&AppState> for SystemState {
-    fn from(value: &AppState) -> Self {
-        match value {
-            AppState::Init(x) => SystemState {
-                gate_state: GateState::Inactive,
-                time: x.time,
-            },
-            AppState::CoordinatorReady(x) => SystemState {
-                gate_state: GateState::Inactive,
-                time: x.time,
-            },
-            AppState::GateStartup(x) => SystemState {
-                gate_state: GateState::Inactive,
-                time: x.time,
-            },
-            AppState::GateReady(x) => SystemState {
-                gate_state: x.gate_state,
-                time: x.time,
-            },
-        }
-    }
-}
-
 struct Services<'a> {
     led_controller: LedController<'a>,
     platform: &'a dyn Platform,
@@ -96,12 +73,11 @@ impl<'a> App<'a> {
 
         self.services.led_controller.update(&self.state);
 
-        let system_state = (&self.state).into();
-
-        self.services
-            .platform
-            .http_server()
-            .set_system_state(&system_state);
+        // TODO Publish state to http
+        // self.services
+        //     .platform
+        //     .http_server()
+        //     .set_system_state(&system_state);
     }
 }
 
@@ -220,7 +196,6 @@ impl GateStartupState {
             let adjusted_time = clock.now();
             AppState::GateReady(GateReadyState {
                 is_wifi_connected,
-                time,
                 gate_state,
                 clock_offset,
                 adjusted_time,
@@ -238,7 +213,6 @@ impl GateStartupState {
 struct GateReadyState {
     is_wifi_connected: bool,
     gate_state: GateState,
-    time: Instant,
     clock_offset: ClockOffset,
     adjusted_time: AdjustedInstant,
 }
@@ -264,7 +238,6 @@ impl GateReadyState {
         AppState::GateReady(GateReadyState {
             is_wifi_connected,
             gate_state,
-            time,
             clock_offset,
             adjusted_time,
         })
