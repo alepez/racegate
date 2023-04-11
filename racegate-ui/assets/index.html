@@ -49,9 +49,11 @@
           var id = `state-gate-${index}`;
           var active = obj.gates.items[index].active;
           var time = obj.gates.items[index].last_activation_time;
-          var timeDiff = (time - coordinatorTime) / 1000;
-          var text = `${active} ${timeDiff}`;
-          document.getElementById(id).innerHTML = text;
+          if (time) {
+            var timeDiff = (time - coordinatorTime) / 1000;
+            var text = `${active} ${timeDiff}`;
+            document.getElementById(id).innerHTML = text;
+          }
         });
 
     }
