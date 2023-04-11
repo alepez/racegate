@@ -8,6 +8,7 @@
 <body>
 <ul>
     <li>Time: <span id="state-time"></span></li>
+    <li>Duration: <span id="state-duration"></span></li>
     <li>Gate 0: <span id="state-gate-0"></span></li>
     <li>Gate 1: <span id="state-gate-1"></span></li>
     <li>Gate 2: <span id="state-gate-2"></span></li>
@@ -15,7 +16,7 @@
 </ul>
 <script>
     // var gateway = `ws://${window.location.hostname}/state`;
-    var gateway = `ws://192.168.1.204/state`;
+    var gateway = `ws://192.168.1.229/state`;
     var websocket = null;
 
     function initWebSocket() {
@@ -40,7 +41,6 @@
     function onMessageData(data) {
         var obj = JSON.parse(data);
         var coordinatorTime = obj.time;
-        // console.log(obj);
         document.getElementById('state-time').innerHTML = coordinatorTime;
 
         var gatesIndexes = [ 0, 1, 2, 3];
@@ -56,6 +56,14 @@
           }
         });
 
+        var duration = obj.race.duration;
+        var durationElem = document.getElementById('state-duration');
+        if (duration) {
+          let durationText = duration.secs + duration.nanos / 1000000000;
+          durationElem.innerHTML = durationText;
+        } else {
+          durationElem.innerHTML = "-";
+        }
     }
 
     function onLoad(event) {
