@@ -176,7 +176,7 @@ impl CoordinatorReadyState {
 
         let mut race = self.system_state.race.clone();
 
-        race.set_gates(&gates, time);
+        race.set_gates(&gates);
 
         let system_state = SystemState { time, gates, race };
 
