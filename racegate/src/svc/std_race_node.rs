@@ -118,7 +118,7 @@ fn spawn_thread(
                 }
 
                 while let Ok(rx_msg) = receive_message(&mut receiver) {
-                    log::info!("{:?}", rx_msg);
+                    log::debug!("{:?}", rx_msg);
                     stats.rx_count += 1;
                 }
 

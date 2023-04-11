@@ -5,7 +5,7 @@ use crate::hal::rgb_led::RgbLedColor;
 use crate::hal::Platform;
 use crate::svc::{Clock, Instant};
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
 pub struct SystemState {
     pub gate_state: GateState,
     pub time: Instant,
@@ -15,6 +15,10 @@ impl From<&AppState> for SystemState {
     fn from(value: &AppState) -> Self {
         match value {
             AppState::Init(x) => SystemState {
+                gate_state: GateState::Inactive,
+                time: x.time,
+            },
+            AppState::CoordinatorReady(x) => SystemState {
                 gate_state: GateState::Inactive,
                 time: x.time,
             },
@@ -35,6 +39,7 @@ struct Services<'a> {
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 enum AppState {
     Init(InitAppState),
+    CoordinatorReady(CoordinatorReadyState),
     Ready(ReadyAppState),
 }
 
@@ -71,11 +76,12 @@ impl<'a> App<'a> {
     pub fn update(&mut self) {
         let new_state = match self.state {
             AppState::Init(mut state) => state.update(&self.services),
+            AppState::CoordinatorReady(mut state) => state.update(&self.services),
             AppState::Ready(mut state) => state.update(&self.services),
         };
 
         if new_state != self.state {
-            log::info!("{:?}", &new_state);
+            // log::info!("{:?}", &new_state);
             self.state = new_state;
         }
 
@@ -103,6 +109,7 @@ impl<'a> LedController<'a> {
     pub fn update(&mut self, app_state: &AppState) {
         let color = match app_state {
             AppState::Init(_) => 0xFF0000,
+            AppState::CoordinatorReady(_) => 0xFFFFFF,
             AppState::Ready(state) => {
                 if state.gate_state == GateState::Active {
                     0x008080
@@ -133,11 +140,25 @@ impl InitAppState {
         let button_state = services.platform.button().state();
         let time = services.race_clock.now().expect("Cannot get time");
 
-        if is_wifi_connected
+        let ready_as_gate = is_wifi_connected
             && (button_state != ButtonState::Pressed)
-            && gate_state != GateState::Active
-        {
+            && gate_state != GateState::Active;
+
+        /* Coordinator gate is always active at startup */
+        let startup_as_coordinator = is_wifi_connected
+            && (button_state != ButtonState::Pressed)
+            && gate_state == GateState::Active;
+
+        if ready_as_gate {
             AppState::Ready(ReadyAppState {
+                is_wifi_connected,
+                gate_state,
+                button_state,
+                time,
+            })
+        } else if startup_as_coordinator {
+            log::info!("This is a coordinator");
+            AppState::CoordinatorReady(CoordinatorReadyState {
                 is_wifi_connected,
                 gate_state,
                 button_state,
@@ -146,6 +167,30 @@ impl InitAppState {
         } else {
             AppState::Init(*self)
         }
+    }
+}
+
+#[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
+struct CoordinatorReadyState {
+    is_wifi_connected: bool,
+    gate_state: GateState,
+    button_state: ButtonState,
+    time: Instant,
+}
+
+impl CoordinatorReadyState {
+    pub fn update(&mut self, services: &Services) -> AppState {
+        let is_wifi_connected = services.platform.wifi().is_connected();
+        let gate_state = services.platform.gate().state();
+        let button_state = services.platform.button().state();
+        let time = services.race_clock.now().expect("Cannot get time");
+
+        AppState::CoordinatorReady(CoordinatorReadyState {
+            is_wifi_connected,
+            gate_state,
+            button_state,
+            time,
+        })
     }
 }
 
