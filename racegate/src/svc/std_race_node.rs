@@ -8,7 +8,6 @@ use std::time::Duration;
 
 use anyhow::anyhow;
 
-use crate::app::SystemState;
 use crate::svc::race_node::{FrameData, RaceNode, RaceNodeMessage};
 use crate::svc::Instant;
 
@@ -176,18 +175,6 @@ fn receive_message(receiver: &mut UdpSocket) -> anyhow::Result<RaceNodeMessage> 
 }
 
 impl RaceNode for StdRaceNode {
-    fn set_system_state(&self, state: &SystemState) {
-        self.state
-            .0
-            .try_lock()
-            .as_mut()
-            .map(|x| {
-                // TODO Change start/finish depending on this node type
-                x.this = Some(*state)
-            })
-            .ok();
-    }
-
     fn coordinator_time(&self) -> Option<Instant> {
         let nodes = self.state.0.lock().ok()?;
         nodes.coordinator_time
@@ -200,7 +187,6 @@ impl RaceNode for StdRaceNode {
 
 #[derive(Default)]
 struct NodesState {
-    this: Option<SystemState>,
     coordinator_time: Option<Instant>,
 }
 
@@ -227,8 +213,6 @@ impl SharedNodeState {
 mod tests {
     use std::time::Duration;
 
-    use crate::app::SystemState;
-    use crate::hal::gate::GateState;
     use crate::svc::race_node::{CoordinatorBeacon, RaceNode};
     use crate::svc::std_race_node::StdRaceNodeConfig;
     use crate::svc::{Instant, StdRaceNode};
@@ -244,11 +228,6 @@ mod tests {
 
         let node = StdRaceNode::new_with_config(cfg).unwrap();
 
-        node.set_system_state(&SystemState {
-            gate_state: GateState::Inactive,
-            time: Instant::from_millis(12345),
-        });
-
         node
     }
 
@@ -262,11 +241,6 @@ mod tests {
         };
 
         let node = StdRaceNode::new_with_config(cfg).unwrap();
-
-        node.set_system_state(&SystemState {
-            gate_state: GateState::Active,
-            time: Instant::from_millis(12345),
-        });
 
         node
     }

@@ -8,8 +8,6 @@ pub enum Error {
 }
 
 pub trait RaceNode {
-    fn set_system_state(&self, status: &SystemState);
-
     fn coordinator_time(&self) -> Option<Instant>;
 
     fn publish(&self, msg: RaceNodeMessage) -> anyhow::Result<()>;

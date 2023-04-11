@@ -102,11 +102,6 @@ impl<'a> App<'a> {
             .platform
             .http_server()
             .set_system_state(&system_state);
-
-        self.services
-            .platform
-            .race_node()
-            .set_system_state(&system_state);
     }
 }
 
