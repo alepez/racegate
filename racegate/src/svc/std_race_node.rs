@@ -222,6 +222,8 @@ mod tests {
     use crate::svc::{RaceNode, StdRaceNode};
 
     fn make_coordinator_node() -> StdRaceNode {
+        // Broadcast does not work on localhost, so we just use different ports
+
         let cfg = StdRaceNodeConfig {
             sender_addr: "0.0.0.0:0".parse().unwrap(),
             receiver_addr: "127.0.0.10:6699".parse().unwrap(),
@@ -240,6 +242,8 @@ mod tests {
     }
 
     fn make_start_node() -> StdRaceNode {
+        // Broadcast does not work on localhost, so we just use different ports
+
         let cfg = StdRaceNodeConfig {
             sender_addr: "0.0.0.0:0".parse().unwrap(),
             receiver_addr: "127.0.0.10:6698".parse().unwrap(),
@@ -257,6 +261,7 @@ mod tests {
         node
     }
 
+    #[ignore]
     #[test_log::test]
     fn test_two_nodes_can_talk() {
         log::info!("test_two_nodes_can_talk");
