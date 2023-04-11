@@ -1,5 +1,4 @@
-use crate::app::SystemState;
-use crate::hal::gate::GateState::{Active, Inactive};
+use crate::hal::gate::GateState;
 use crate::svc::clock::LocalInstant;
 
 #[derive(Debug)]
@@ -59,7 +58,8 @@ impl From<[u8; 16]> for FrameData {
 #[derive(Debug, Copy, Clone)]
 pub struct GateBeacon {
     pub addr: NodeAddress,
-    pub state: SystemState,
+    pub state: GateState,
+    pub local_time: LocalInstant,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -102,16 +102,19 @@ impl TryFrom<FrameData> for GateBeacon {
         let addr = NodeAddress(*addr);
 
         let gate_state = match data.0.get(2) {
-            Some(0) => Inactive,
-            Some(1) => Active,
-            _ => Inactive,
+            Some(0) => GateState::Inactive,
+            Some(1) => GateState::Active,
+            _ => GateState::Inactive,
         };
 
-        let time = LocalInstant::from_millis(deserialize_u32(&data, 3).ok_or(Error::Unknown)? as i32);
+        let time =
+            LocalInstant::from_millis(deserialize_u32(&data, 3).ok_or(Error::Unknown)? as i32);
 
-        let state = SystemState { gate_state, time };
-
-        Ok(GateBeacon { addr, state })
+        Ok(GateBeacon {
+            addr,
+            state: gate_state,
+            local_time: time,
+        })
     }
 }
 
@@ -119,7 +122,8 @@ impl TryFrom<FrameData> for CoordinatorBeacon {
     type Error = Error;
 
     fn try_from(data: FrameData) -> Result<CoordinatorBeacon, Error> {
-        let time = LocalInstant::from_millis(deserialize_u32(&data, 1).ok_or(Error::Unknown)? as i32);
+        let time =
+            LocalInstant::from_millis(deserialize_u32(&data, 1).ok_or(Error::Unknown)? as i32);
 
         Ok(CoordinatorBeacon { time })
     }
@@ -139,8 +143,8 @@ impl From<GateBeacon> for RaceNodeMessage {
 
 fn serialize_system_state(x: &GateBeacon, data: &mut FrameData) {
     data.0[1] = x.addr.0;
-    data.0[2] = x.state.gate_state as u8;
-    serialize_u32(x.state.time.as_millis() as u32, data, 3);
+    data.0[2] = x.state as u8;
+    serialize_u32(x.local_time.as_millis() as u32, data, 3);
 }
 
 fn serialize_coordinator_beacon(x: &CoordinatorBeacon, data: &mut FrameData) {
@@ -198,10 +202,8 @@ mod tests {
     fn test_serialize_system_state() {
         let x = GateBeacon {
             addr: NodeAddress::start(),
-            state: SystemState {
-                gate_state: GateState::Active,
-                time: LocalInstant::from_millis(12345),
-            },
+            state: GateState::Active,
+            local_time: LocalInstant::from_millis(12345),
         };
 
         let msg = RaceNodeMessage::GateBeacon(x);

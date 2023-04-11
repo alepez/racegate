@@ -5,15 +5,9 @@ use crate::hal::rgb_led::RgbLedColor;
 use crate::hal::Platform;
 use crate::svc::race_node::*;
 use crate::svc::{
-    calculate_clock_offset, LocalOffset, CoordinatedClock, CoordinatedInstant, LocalClock,
-    LocalInstant,
+    calculate_clock_offset, CoordinatedClock, CoordinatedInstant, LocalClock, LocalInstant,
+    LocalOffset,
 };
-
-#[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
-pub struct SystemState {
-    pub gate_state: GateState,
-    pub time: LocalInstant,
-}
 
 struct Services<'a> {
     led_controller: LedController<'a>,
@@ -194,12 +188,12 @@ impl GateStartupState {
         if let Some(clock_offset) = clock_offset {
             log::info!("Gate is ready, offset: {}ms", clock_offset.as_millis());
             let clock = CoordinatedClock::new(&services.local_clock, clock_offset);
-            let adjusted_time = clock.now();
+            let coordinated_time = clock.now();
             AppState::GateReady(GateReadyState {
                 is_wifi_connected,
                 gate_state,
                 clock_offset,
-                adjusted_time,
+                coordinated_time,
             })
         } else {
             AppState::GateStartup(GateStartupState {
@@ -215,7 +209,7 @@ struct GateReadyState {
     is_wifi_connected: bool,
     gate_state: GateState,
     clock_offset: LocalOffset,
-    adjusted_time: CoordinatedInstant,
+    coordinated_time: CoordinatedInstant,
 }
 
 impl GateReadyState {
@@ -225,11 +219,12 @@ impl GateReadyState {
         let time = services.local_clock.now().expect("Cannot get time");
         let clock_offset = self.clock_offset;
         let clock = CoordinatedClock::new(&services.local_clock, clock_offset);
-        let adjusted_time = clock.now();
+        let coordinated_time = clock.now();
 
         let beacon = GateBeacon {
             addr: NodeAddress::start(), // TODO
-            state: SystemState { gate_state, time },
+            state: gate_state,
+            local_time: time,
         };
 
         if let Err(e) = services.platform.race_node().publish(beacon.into()) {
@@ -240,7 +235,7 @@ impl GateReadyState {
             is_wifi_connected,
             gate_state,
             clock_offset,
-            adjusted_time,
+            coordinated_time,
         })
     }
 }
