@@ -70,14 +70,6 @@ impl From<&SystemState> for FrameData {
     }
 }
 
-impl TryFrom<[u8; 16]> for RaceNodeMessage {
-    type Error = Error;
-
-    fn try_from(value: [u8; 16]) -> Result<Self, Self::Error> {
-        RaceNodeMessage::try_from(FrameData::from(value))
-    }
-}
-
 impl From<&RaceNodeMessage> for FrameData {
     fn from(msg: &RaceNodeMessage) -> Self {
         let msg_id = match msg {

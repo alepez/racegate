@@ -7,6 +7,7 @@ use std::time::Duration;
 use anyhow::anyhow;
 
 use crate::app::SystemState;
+use crate::svc::race_node::FrameData;
 use crate::svc::{RaceNode, RaceNodeMessage};
 
 #[derive(Default, Debug)]
@@ -150,7 +151,8 @@ fn receive_message(receiver: &mut UdpSocket) -> anyhow::Result<RaceNodeMessage> 
 
     if let Ok((number_of_bytes, _src_addr)) = receiver.recv_from(&mut buf) {
         if number_of_bytes == RaceNodeMessage::FRAME_SIZE {
-            RaceNodeMessage::try_from(buf).map_err(|_| anyhow!("Cannot parse"))
+            let data = FrameData::from(buf);
+            RaceNodeMessage::try_from(data).map_err(|_| anyhow!("Cannot parse"))
         } else {
             Err(anyhow!("Wrong number of bytes"))
         }
