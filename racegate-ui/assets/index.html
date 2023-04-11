@@ -8,8 +8,10 @@
 <body>
 <ul>
     <li>Time: <span id="state-time"></span></li>
-    <li>Gate 1: <span id="state-gate-start-active"></span></li>
-    <li>Gate 15: <span id="state-gate-finish-active"></span></li>
+    <li>Gate 0: <span id="state-gate-0-active"></span></li>
+    <li>Gate 1: <span id="state-gate-1-active"></span></li>
+    <li>Gate 2: <span id="state-gate-2-active"></span></li>
+    <li>Gate 3: <span id="state-gate-3-active"></span></li>
 </ul>
 <script>
     // var gateway = `ws://${window.location.hostname}/state`;
@@ -37,9 +39,12 @@
 
     function onMessageData(data) {
         var obj = JSON.parse(data);
+        // console.log(obj);
         document.getElementById('state-time').innerHTML = obj.time;
-        document.getElementById('state-gate-start-active').innerHTML = obj.gates.items[0].active;
-        document.getElementById('state-gate-finish-active').innerHTML = obj.gates.items[3].active;
+        document.getElementById('state-gate-0-active').innerHTML = obj.gates.items[0].active;
+        document.getElementById('state-gate-1-active').innerHTML = obj.gates.items[1].active;
+        document.getElementById('state-gate-2-active').innerHTML = obj.gates.items[2].active;
+        document.getElementById('state-gate-3-active').innerHTML = obj.gates.items[3].active;
     }
 
     function onLoad(event) {
