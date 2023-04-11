@@ -113,15 +113,7 @@ impl TryFrom<FrameData> for AddressedSystemState {
             _ => Inactive,
         };
 
-        let time = {
-            let d0 = *data.0.get(3).ok_or(Error::Unknown)?;
-            let d1 = *data.0.get(4).ok_or(Error::Unknown)?;
-            let d2 = *data.0.get(5).ok_or(Error::Unknown)?;
-            let d3 = *data.0.get(6).ok_or(Error::Unknown)?;
-            let time_ms =
-                ((d0 as u32) << 24) | ((d1 as u32) << 16) | ((d2 as u32) << 8) | (d3 as u32);
-            Instant::from_millis(time_ms as i32)
-        };
+        let time = Instant::from_millis(deserialize_u32(&data, 3).ok_or(Error::Unknown)? as i32);
 
         let state = SystemState { gate_state, time };
 
@@ -133,15 +125,7 @@ impl TryFrom<FrameData> for CoordinatorBeacon {
     type Error = Error;
 
     fn try_from(data: FrameData) -> Result<CoordinatorBeacon, Error> {
-        let time = {
-            let d0 = *data.0.get(1).ok_or(Error::Unknown)?;
-            let d1 = *data.0.get(2).ok_or(Error::Unknown)?;
-            let d2 = *data.0.get(3).ok_or(Error::Unknown)?;
-            let d3 = *data.0.get(4).ok_or(Error::Unknown)?;
-            let time_ms =
-                ((d0 as u32) << 24) | ((d1 as u32) << 16) | ((d2 as u32) << 8) | (d3 as u32);
-            Instant::from_millis(time_ms as i32)
-        };
+        let time = Instant::from_millis(deserialize_u32(&data, 1).ok_or(Error::Unknown)? as i32);
 
         Ok(CoordinatorBeacon { time })
     }
@@ -173,6 +157,14 @@ fn serialize_u32(x: u32, data: &mut FrameData, offset: usize) {
     data.0[offset + 3] = ((x) & 0xFF) as u8;
 }
 
+fn deserialize_u32(data: &FrameData, offset: usize) -> Option<u32> {
+    let d0 = *data.0.get(offset)?;
+    let d1 = *data.0.get(offset + 1)?;
+    let d2 = *data.0.get(offset + 2)?;
+    let d3 = *data.0.get(offset + 3)?;
+    Some(((d0 as u32) << 24) | ((d1 as u32) << 16) | ((d2 as u32) << 8) | (d3 as u32))
+}
+
 impl From<&RaceNodeMessage> for FrameData {
     fn from(msg: &RaceNodeMessage) -> Self {
         let mut data = FrameData::from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
@@ -190,8 +182,9 @@ impl From<&RaceNodeMessage> for FrameData {
 
 #[cfg(test)]
 mod tests {
-    use crate::hal::gate::GateState;
     use insta::assert_debug_snapshot;
+
+    use crate::hal::gate::GateState;
 
     use super::*;
 
