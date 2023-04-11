@@ -38,6 +38,35 @@ impl Clock {
 }
 
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
+pub struct AdjustedInstant(i32);
+
+impl AdjustedInstant {
+    pub fn from_millis(ms: i32) -> Self {
+        Self(ms)
+    }
+
+    pub fn as_millis(&self) -> i32 {
+        self.0
+    }
+}
+
+pub struct AdjustedClock<'a> {
+    clock: &'a Clock,
+    offset: ClockOffset,
+}
+
+impl<'a> AdjustedClock<'a> {
+    pub fn new(clock: &'a Clock, offset: ClockOffset) -> Self {
+        Self { clock, offset }
+    }
+
+    pub fn now(&self) -> AdjustedInstant {
+        let t = self.clock.now().expect("Cannot get time");
+        AdjustedInstant::from_millis(t.as_millis() + self.offset.as_millis())
+    }
+}
+
+#[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct ClockOffset(i32);
 
 impl ClockOffset {
