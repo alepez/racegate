@@ -8,10 +8,10 @@
 <body>
 <ul>
     <li>Time: <span id="state-time"></span></li>
-    <li>Gate 0: <span id="state-gate-0-active"></span></li>
-    <li>Gate 1: <span id="state-gate-1-active"></span></li>
-    <li>Gate 2: <span id="state-gate-2-active"></span></li>
-    <li>Gate 3: <span id="state-gate-3-active"></span></li>
+    <li>Gate 0: <span id="state-gate-0"></span></li>
+    <li>Gate 1: <span id="state-gate-1"></span></li>
+    <li>Gate 2: <span id="state-gate-2"></span></li>
+    <li>Gate 3: <span id="state-gate-3"></span></li>
 </ul>
 <script>
     // var gateway = `ws://${window.location.hostname}/state`;
@@ -41,10 +41,17 @@
         var obj = JSON.parse(data);
         // console.log(obj);
         document.getElementById('state-time').innerHTML = obj.time;
-        document.getElementById('state-gate-0-active').innerHTML = obj.gates.items[0].active;
-        document.getElementById('state-gate-1-active').innerHTML = obj.gates.items[1].active;
-        document.getElementById('state-gate-2-active').innerHTML = obj.gates.items[2].active;
-        document.getElementById('state-gate-3-active').innerHTML = obj.gates.items[3].active;
+
+        var gatesIndexes = [ 0, 1, 2, 3];
+
+        gatesIndexes.forEach((index) => {
+          var id = `state-gate-${index}`;
+          var active = obj.gates.items[index].active;
+          var time = obj.gates.items[index].last_activation_time;
+          var text = `${active} ${time}`;
+          document.getElementById(id).innerHTML = text;
+        });
+
     }
 
     function onLoad(event) {
