@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::hal::button::ButtonState;
 use crate::hal::gate::GateState;
 use crate::hal::rgb_led::RgbLed;
@@ -30,10 +32,6 @@ impl From<&AppState> for SystemState {
                 gate_state: x.gate_state,
                 time: x.time,
             },
-            AppState::GateDisconnected(x) => SystemState {
-                gate_state: GateState::Inactive,
-                time: x.time,
-            },
         }
     }
 }
@@ -50,7 +48,6 @@ enum AppState {
     CoordinatorReady(CoordinatorReadyState),
     GateStartup(GateStartupState),
     GateReady(GateReadyState),
-    GateDisconnected(GateDisconnectedState),
 }
 
 impl Default for AppState {
@@ -89,7 +86,6 @@ impl<'a> App<'a> {
             AppState::CoordinatorReady(mut state) => state.update(&self.services),
             AppState::GateStartup(mut state) => state.update(&self.services),
             AppState::GateReady(mut state) => state.update(&self.services),
-            AppState::GateDisconnected(mut state) => state.update(&self.services),
         };
 
         if new_state != self.state {
@@ -132,7 +128,6 @@ impl<'a> LedController<'a> {
                     0x800000
                 }
             }
-            AppState::GateDisconnected(_) => 0xFF00FF,
         };
 
         self.led.set_color(RgbLedColor::from(color));
@@ -168,8 +163,6 @@ impl InitState {
             AppState::GateStartup(GateStartupState {
                 is_wifi_connected,
                 time,
-                coordinator_time: None,
-                adjusted_time: None,
             })
         } else if startup_as_coordinator {
             log::info!("This is a coordinator");
@@ -205,31 +198,41 @@ impl CoordinatorReadyState {
 struct GateStartupState {
     is_wifi_connected: bool,
     time: Instant,
-    coordinator_time: Option<Instant>,
-    adjusted_time: Option<Instant>,
+}
+
+fn calculate_clock_offset(coordinator_time: Instant, local_time: Instant) -> Duration {
+    let c = coordinator_time.to_millis();
+    let l = local_time.to_millis();
+    if c > l {
+        Duration::from_millis((c - l) as u64)
+    } else {
+        todo!()
+    }
 }
 
 impl GateStartupState {
     pub fn update(&mut self, services: &Services) -> AppState {
         let is_wifi_connected = services.platform.wifi().is_connected();
         let time = services.race_clock.now().expect("Cannot get time");
+        let gate_state = services.platform.gate().state();
 
-        let coordinator_time = None; // TODO From network
-        let adjusted_time = None; // TODO Calculate
+        let clock_offset = services
+            .platform
+            .race_node()
+            .coordinator()
+            .map(|coord| calculate_clock_offset(coord.time, time));
 
-        // TODO switch to Ready when time is synchronized with coordinator
-
-        if is_wifi_connected {
-            AppState::GateDisconnected(GateDisconnectedState {
+        if let Some(clock_offset) = clock_offset {
+            AppState::GateReady(GateReadyState {
                 is_wifi_connected,
                 time,
+                gate_state,
+                clock_offset,
             })
         } else {
             AppState::GateStartup(GateStartupState {
                 is_wifi_connected,
                 time,
-                coordinator_time,
-                adjusted_time,
             })
         }
     }
@@ -240,6 +243,7 @@ struct GateReadyState {
     is_wifi_connected: bool,
     gate_state: GateState,
     time: Instant,
+    clock_offset: Duration,
 }
 
 impl GateReadyState {
@@ -252,41 +256,22 @@ impl GateReadyState {
             is_wifi_connected,
             gate_state,
             time,
+            clock_offset: self.clock_offset,
         })
-    }
-}
-
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-struct GateDisconnectedState {
-    is_wifi_connected: bool,
-    time: Instant,
-}
-
-impl GateDisconnectedState {
-    pub fn update(&mut self, services: &Services) -> AppState {
-        let is_wifi_connected = services.platform.wifi().is_connected();
-        let time = services.race_clock.now().expect("Cannot get time");
-
-        if is_wifi_connected {
-            AppState::GateReady(GateReadyState {
-                is_wifi_connected,
-                gate_state: Default::default(), // TODO
-                time,
-            })
-        } else {
-            AppState::GateDisconnected(GateDisconnectedState {
-                is_wifi_connected,
-                time,
-            })
-        }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::svc::Instant;
+
+    use super::*;
+
     #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
+    fn test_calculate_clock_offset_when_coordinator_started_before_gate() {
+        let coord_time = Instant::from_millis(60_000);
+        let local_time = Instant::from_millis(10_000);
+        let offset = calculate_clock_offset(coord_time, local_time);
+        assert_eq!(offset, Duration::from_millis(50_000));
     }
 }

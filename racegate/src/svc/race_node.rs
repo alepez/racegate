@@ -10,6 +10,8 @@ pub trait RaceNode {
     fn set_system_state(&self, status: &SystemState);
 
     fn set_node_address(&self, node_id: NodeAddress);
+
+    fn coordinator(&self) -> Option<SystemState>;
 }
 
 #[derive(Debug, Copy, Clone)]

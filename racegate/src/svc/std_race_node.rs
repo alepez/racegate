@@ -182,12 +182,18 @@ impl RaceNode for StdRaceNode {
             .map(|x| x.addr = Some(node_addr))
             .ok();
     }
+
+    fn coordinator(&self) -> Option<SystemState> {
+        let nodes = self.state.0.lock().ok()?;
+        nodes.coordinator
+    }
 }
 
 #[derive(Default)]
 struct NodesState {
     addr: Option<NodeAddress>,
     this: Option<SystemState>,
+    coordinator: Option<SystemState>,
 }
 
 #[derive(Clone)]
