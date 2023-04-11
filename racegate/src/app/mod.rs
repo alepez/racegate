@@ -1,5 +1,3 @@
-pub mod gates;
-
 use crate::app::gates::Gates;
 use crate::hal::button::ButtonState;
 use crate::hal::gate::GateState;
@@ -12,7 +10,9 @@ use crate::svc::{
     LocalOffset,
 };
 
-#[derive(Default, Clone, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
+pub mod gates;
+
+#[derive(Debug, Default, Clone, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SystemState {
     time: CoordinatedInstant,
     gates: Gates,
@@ -24,7 +24,7 @@ struct Services<'a> {
     local_clock: LocalClock,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 enum AppState {
     Init(InitState),
     CoordinatorReady(CoordinatorReadyState),
@@ -63,11 +63,11 @@ impl<'a> App<'a> {
     }
 
     pub fn update(&mut self) {
-        let new_state = match self.state {
-            AppState::Init(mut state) => state.update(&self.services),
-            AppState::CoordinatorReady(mut state) => state.update(&self.services),
-            AppState::GateStartup(mut state) => state.update(&self.services),
-            AppState::GateReady(mut state) => state.update(&self.services),
+        let new_state = match &mut self.state {
+            AppState::Init(state) => state.update(&self.services),
+            AppState::CoordinatorReady(state) => state.update(&self.services),
+            AppState::GateStartup(state) => state.update(&self.services),
+            AppState::GateReady(state) => state.update(&self.services),
         };
 
         if new_state != self.state {
@@ -140,6 +140,7 @@ impl InitState {
             AppState::CoordinatorReady(CoordinatorReadyState {
                 is_wifi_connected,
                 time: CoordinatedInstant::from_millis(local_time.as_millis()),
+                system_state: SystemState::default(),
             })
         } else {
             AppState::Init(*self)
@@ -147,10 +148,11 @@ impl InitState {
     }
 }
 
-#[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Default, Clone, Eq, PartialEq, Debug)]
 struct CoordinatorReadyState {
     is_wifi_connected: bool,
     time: CoordinatedInstant,
+    system_state: SystemState,
 }
 
 impl CoordinatorReadyState {
@@ -178,6 +180,7 @@ impl CoordinatorReadyState {
         AppState::CoordinatorReady(CoordinatorReadyState {
             is_wifi_connected,
             time,
+            system_state,
         })
     }
 }
