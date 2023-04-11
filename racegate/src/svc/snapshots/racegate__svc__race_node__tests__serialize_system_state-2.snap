@@ -2,8 +2,8 @@
 source: src/svc/race_node.rs
 expression: "RaceNodeMessage::try_from(data).unwrap()"
 ---
-SystemState(
-    AddressedSystemState {
+GateBeacon(
+    GateBeacon {
         addr: NodeAddress(
             1,
         ),

@@ -59,7 +59,7 @@ impl From<[u8; 16]> for FrameData {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct AddressedSystemState {
+pub struct GateBeacon {
     pub addr: NodeAddress,
     pub state: SystemState,
 }
@@ -71,7 +71,7 @@ pub struct CoordinatorBeacon {
 
 #[derive(Debug)]
 pub enum RaceNodeMessage {
-    SystemState(AddressedSystemState),
+    GateBeacon(GateBeacon),
     CoordinatorBeacon(CoordinatorBeacon),
 }
 
@@ -89,21 +89,17 @@ impl TryFrom<FrameData> for RaceNodeMessage {
     fn try_from(data: FrameData) -> Result<RaceNodeMessage, Error> {
         let msg_id = data.0.first().ok_or(Error::Unknown)?;
         match msg_id {
-            1 => Ok(RaceNodeMessage::SystemState(
-                AddressedSystemState::try_from(data)?,
-            )),
-            2 => Ok(RaceNodeMessage::CoordinatorBeacon(
-                CoordinatorBeacon::try_from(data)?,
-            )),
+            1 => Ok(GateBeacon::try_from(data)?.into()),
+            2 => Ok(CoordinatorBeacon::try_from(data)?.into()),
             _ => Err(Error::Unknown),
         }
     }
 }
 
-impl TryFrom<FrameData> for AddressedSystemState {
+impl TryFrom<FrameData> for GateBeacon {
     type Error = Error;
 
-    fn try_from(data: FrameData) -> Result<AddressedSystemState, Error> {
+    fn try_from(data: FrameData) -> Result<GateBeacon, Error> {
         let addr = data.0.get(1).ok_or(Error::Unknown)?;
         let addr = NodeAddress(*addr);
 
@@ -117,7 +113,7 @@ impl TryFrom<FrameData> for AddressedSystemState {
 
         let state = SystemState { gate_state, time };
 
-        Ok(AddressedSystemState { addr, state })
+        Ok(GateBeacon { addr, state })
     }
 }
 
@@ -137,13 +133,13 @@ impl From<CoordinatorBeacon> for RaceNodeMessage {
     }
 }
 
-impl From<AddressedSystemState> for RaceNodeMessage {
-    fn from(x: AddressedSystemState) -> Self {
-        RaceNodeMessage::SystemState(x)
+impl From<GateBeacon> for RaceNodeMessage {
+    fn from(x: GateBeacon) -> Self {
+        RaceNodeMessage::GateBeacon(x)
     }
 }
 
-fn serialize_system_state(x: &AddressedSystemState, data: &mut FrameData) {
+fn serialize_system_state(x: &GateBeacon, data: &mut FrameData) {
     data.0[1] = x.addr.0;
     data.0[2] = x.state.gate_state as u8;
     serialize_u32(x.state.time.as_millis() as u32, data, 3);
@@ -155,7 +151,7 @@ fn serialize_coordinator_beacon(x: &CoordinatorBeacon, data: &mut FrameData) {
 
 fn serialize_msg_id(msg: &RaceNodeMessage, data: &mut FrameData) {
     let msg_id = match msg {
-        RaceNodeMessage::SystemState(_) => 1,
+        RaceNodeMessage::GateBeacon(_) => 1,
         RaceNodeMessage::CoordinatorBeacon(_) => 2,
     };
 
@@ -184,7 +180,7 @@ impl From<&RaceNodeMessage> for FrameData {
         serialize_msg_id(msg, &mut data);
 
         match msg {
-            RaceNodeMessage::SystemState(x) => serialize_system_state(x, &mut data),
+            RaceNodeMessage::GateBeacon(x) => serialize_system_state(x, &mut data),
             RaceNodeMessage::CoordinatorBeacon(x) => serialize_coordinator_beacon(x, &mut data),
         };
 
@@ -202,7 +198,7 @@ mod tests {
 
     #[test]
     fn test_serialize_system_state() {
-        let x = AddressedSystemState {
+        let x = GateBeacon {
             addr: NodeAddress::start(),
             state: SystemState {
                 gate_state: GateState::Active,
@@ -210,7 +206,7 @@ mod tests {
             },
         };
 
-        let msg = RaceNodeMessage::SystemState(x);
+        let msg = RaceNodeMessage::GateBeacon(x);
         let data = msg.data();
 
         assert_debug_snapshot!(data.as_bytes());

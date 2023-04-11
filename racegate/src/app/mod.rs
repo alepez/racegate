@@ -257,7 +257,7 @@ impl GateReadyState {
         let clock = AdjustedClock::new(&services.local_clock, clock_offset);
         let adjusted_time = clock.now();
 
-        let beacon = AddressedSystemState {
+        let beacon = GateBeacon {
             addr: NodeAddress::start(), // TODO
             state: SystemState { gate_state, time },
         };
