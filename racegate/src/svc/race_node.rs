@@ -112,7 +112,7 @@ impl TryFrom<FrameData> for AddressedSystemState {
             let d3 = *data.0.get(6).ok_or(Error::Unknown)?;
             let time_ms =
                 ((d0 as u32) << 24) | ((d1 as u32) << 16) | ((d2 as u32) << 8) | (d3 as u32);
-            Instant::from_millis(time_ms)
+            Instant::from_millis(time_ms as i32)
         };
 
         let state = SystemState { gate_state, time };
@@ -124,10 +124,10 @@ impl TryFrom<FrameData> for AddressedSystemState {
 fn serialize_system_state(x: &AddressedSystemState, data: &mut FrameData) {
     data.0[1] = x.addr.0;
     data.0[2] = x.state.gate_state as u8;
-    data.0[3] = ((x.state.time.to_millis() >> 24) & 0xFF) as u8;
-    data.0[4] = ((x.state.time.to_millis() >> 16) & 0xFF) as u8;
-    data.0[5] = ((x.state.time.to_millis() >> 8) & 0xFF) as u8;
-    data.0[6] = ((x.state.time.to_millis()) & 0xFF) as u8;
+    data.0[3] = ((x.state.time.as_millis() >> 24) & 0xFF) as u8;
+    data.0[4] = ((x.state.time.as_millis() >> 16) & 0xFF) as u8;
+    data.0[5] = ((x.state.time.as_millis() >> 8) & 0xFF) as u8;
+    data.0[6] = ((x.state.time.as_millis()) & 0xFF) as u8;
 }
 
 impl From<&AddressedSystemState> for FrameData {

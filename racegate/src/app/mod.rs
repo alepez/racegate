@@ -1,11 +1,9 @@
-use std::time::Duration;
-
 use crate::hal::button::ButtonState;
 use crate::hal::gate::GateState;
 use crate::hal::rgb_led::RgbLed;
 use crate::hal::rgb_led::RgbLedColor;
 use crate::hal::Platform;
-use crate::svc::{Clock, Instant};
+use crate::svc::{calculate_clock_offset, Clock, ClockOffset, Instant};
 
 #[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
 pub struct SystemState {
@@ -200,16 +198,6 @@ struct GateStartupState {
     time: Instant,
 }
 
-fn calculate_clock_offset(coordinator_time: Instant, local_time: Instant) -> Duration {
-    let c = coordinator_time.to_millis();
-    let l = local_time.to_millis();
-    if c > l {
-        Duration::from_millis((c - l) as u64)
-    } else {
-        todo!()
-    }
-}
-
 impl GateStartupState {
     pub fn update(&mut self, services: &Services) -> AppState {
         let is_wifi_connected = services.platform.wifi().is_connected();
@@ -223,6 +211,7 @@ impl GateStartupState {
             .map(|coord| calculate_clock_offset(coord.time, time));
 
         if let Some(clock_offset) = clock_offset {
+            log::info!("Gate is ready, offset: {}ms", clock_offset.as_millis());
             AppState::GateReady(GateReadyState {
                 is_wifi_connected,
                 time,
@@ -243,7 +232,7 @@ struct GateReadyState {
     is_wifi_connected: bool,
     gate_state: GateState,
     time: Instant,
-    clock_offset: Duration,
+    clock_offset: ClockOffset,
 }
 
 impl GateReadyState {
@@ -258,20 +247,5 @@ impl GateReadyState {
             time,
             clock_offset: self.clock_offset,
         })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::svc::Instant;
-
-    use super::*;
-
-    #[test]
-    fn test_calculate_clock_offset_when_coordinator_started_before_gate() {
-        let coord_time = Instant::from_millis(60_000);
-        let local_time = Instant::from_millis(10_000);
-        let offset = calculate_clock_offset(coord_time, local_time);
-        assert_eq!(offset, Duration::from_millis(50_000));
     }
 }
