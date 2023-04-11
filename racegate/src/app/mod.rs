@@ -168,6 +168,8 @@ impl InitState {
             AppState::GateStartup(GateStartupState {
                 is_wifi_connected,
                 time,
+                coordinator_time: None,
+                adjusted_time: None,
             })
         } else if startup_as_coordinator {
             log::info!("This is a coordinator");
@@ -203,12 +205,17 @@ impl CoordinatorReadyState {
 struct GateStartupState {
     is_wifi_connected: bool,
     time: Instant,
+    coordinator_time: Option<Instant>,
+    adjusted_time: Option<Instant>,
 }
 
 impl GateStartupState {
     pub fn update(&mut self, services: &Services) -> AppState {
         let is_wifi_connected = services.platform.wifi().is_connected();
         let time = services.race_clock.now().expect("Cannot get time");
+
+        let coordinator_time = None; // TODO From network
+        let adjusted_time = None; // TODO Calculate
 
         // TODO switch to Ready when time is synchronized with coordinator
 
@@ -221,6 +228,8 @@ impl GateStartupState {
             AppState::GateStartup(GateStartupState {
                 is_wifi_connected,
                 time,
+                coordinator_time,
+                adjusted_time,
             })
         }
     }
