@@ -12,11 +12,13 @@ pub struct Gates {
 
 impl Gates {
     pub fn start_gate(&self) -> &Gate {
-        &self.items[0]
+        const INDEX: usize = NodeAddress::start().unwrap_as_gate_index();
+        &self.items[INDEX]
     }
 
     pub fn finish_gate(&self) -> &Gate {
-        &self.items[17]
+        const INDEX: usize = NodeAddress::finish().unwrap_as_gate_index();
+        &self.items[INDEX]
     }
 
     pub fn get_mut_from_addr(&mut self, addr: NodeAddress) -> Option<&mut Gate> {

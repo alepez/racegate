@@ -24,28 +24,28 @@ const START_ADDRESS: NodeAddress = NodeAddress(1);
 const FINISH_ADDRESS: NodeAddress = NodeAddress(15);
 
 impl NodeAddress {
-    pub fn coordinator() -> Self {
+    pub const fn coordinator() -> Self {
         COORDINATOR_ADDRESS
     }
 
-    pub fn start() -> Self {
+    pub const fn start() -> Self {
         START_ADDRESS
     }
 
-    pub fn finish() -> Self {
+    pub const fn finish() -> Self {
         FINISH_ADDRESS
     }
 
-    pub fn is_coordinator(&self) -> bool {
-        *self == COORDINATOR_ADDRESS
+    pub const fn is_coordinator(&self) -> bool {
+        self.0 == COORDINATOR_ADDRESS.0
     }
 
-    pub fn is_start(&self) -> bool {
-        *self == START_ADDRESS
+    pub const fn is_start(&self) -> bool {
+        self.0 == START_ADDRESS.0
     }
 
-    pub fn is_finish(&self) -> bool {
-        *self == FINISH_ADDRESS
+    pub const fn is_finish(&self) -> bool {
+        self.0 == FINISH_ADDRESS.0
     }
 
     pub fn as_gate_index(&self) -> Option<usize> {
@@ -53,6 +53,14 @@ impl NodeAddress {
             None
         } else {
             Some((self.0 as usize) - 1)
+        }
+    }
+
+    pub const fn unwrap_as_gate_index(&self) -> usize {
+        if self.0 < 1 {
+            panic!()
+        } else {
+            (self.0 as usize) - 1
         }
     }
 }

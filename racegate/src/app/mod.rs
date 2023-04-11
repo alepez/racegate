@@ -1,4 +1,5 @@
 use crate::app::gates::Gates;
+use crate::app::race::Race;
 use crate::hal::button::ButtonState;
 use crate::hal::gate::GateState;
 use crate::hal::rgb_led::RgbLed;
@@ -11,11 +12,13 @@ use crate::svc::{
 };
 
 pub mod gates;
+mod race;
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SystemState {
     time: CoordinatedInstant,
     gates: Gates,
+    race: Race,
 }
 
 struct Services<'a> {
@@ -156,7 +159,7 @@ struct CoordinatorReadyState {
 }
 
 impl CoordinatorReadyState {
-    pub fn update(&mut self, services: &Services) -> AppState {
+    pub fn update(&self, services: &Services) -> AppState {
         let is_wifi_connected = services.platform.wifi().is_connected();
         let local_time = services.local_clock.now().expect("Cannot get time");
 
@@ -170,12 +173,17 @@ impl CoordinatorReadyState {
         }
 
         let gates = services.platform.race_node().gates();
-        let system_state = SystemState { time, gates };
+
+        let mut race = self.system_state.race.clone();
+
+        race.set_gates(&gates, time);
+
+        let system_state = SystemState { time, gates, race };
 
         services
             .platform
             .http_server()
-            .set_system_state(&system_state);
+            .set_system_state(&self.system_state);
 
         AppState::CoordinatorReady(CoordinatorReadyState {
             is_wifi_connected,
