@@ -10,8 +10,6 @@ pub enum Error {
 pub trait RaceNode {
     fn set_system_state(&self, status: &SystemState);
 
-    fn set_node_address(&self, node_id: NodeAddress);
-
     fn coordinator(&self) -> Option<SystemState>;
 
     fn publish(&self, msg: RaceNodeMessage) -> anyhow::Result<()>;
@@ -136,6 +134,12 @@ impl TryFrom<FrameData> for CoordinatorBeacon {
 impl From<CoordinatorBeacon> for RaceNodeMessage {
     fn from(x: CoordinatorBeacon) -> Self {
         RaceNodeMessage::CoordinatorBeacon(x)
+    }
+}
+
+impl From<AddressedSystemState> for RaceNodeMessage {
+    fn from(x: AddressedSystemState) -> Self {
+        RaceNodeMessage::SystemState(x)
     }
 }
 

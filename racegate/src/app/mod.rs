@@ -257,6 +257,15 @@ impl GateReadyState {
         let clock = AdjustedClock::new(&services.local_clock, clock_offset);
         let adjusted_time = clock.now();
 
+        let beacon = AddressedSystemState {
+            addr: NodeAddress::start(), // TODO
+            state: SystemState { gate_state, time },
+        };
+
+        if let Err(e) = services.platform.race_node().publish(beacon.into()) {
+            log::error!("{e}");
+        }
+
         AppState::GateReady(GateReadyState {
             is_wifi_connected,
             gate_state,

@@ -8,9 +8,7 @@ use std::time::Duration;
 use anyhow::anyhow;
 
 use crate::app::SystemState;
-use crate::svc::race_node::{
-    AddressedSystemState, FrameData, NodeAddress, RaceNode, RaceNodeMessage,
-};
+use crate::svc::race_node::{FrameData, RaceNode, RaceNodeMessage};
 
 #[derive(Default, Debug)]
 struct Stats {
@@ -100,7 +98,7 @@ impl Drop for StdRaceNode {
 
 fn spawn_thread(
     broadcast_addr: SocketAddr,
-    state: SharedNodeState,
+    _state: SharedNodeState, // TODO Use to receive
     sender: UdpSocket,
     mut receiver: UdpSocket,
     continue_running: Arc<AtomicBool>,
@@ -113,17 +111,6 @@ fn spawn_thread(
             let mut stats = Stats::default();
 
             loop {
-                let tx_msg = system_state_to_msg(state.clone());
-
-                if let Some(tx_msg) = tx_msg {
-                    if sender
-                        .send_to(tx_msg.data().as_bytes(), broadcast_addr)
-                        .is_ok()
-                    {
-                        stats.tx_count += 1;
-                    }
-                }
-
                 for tx_msg in tx_receiver.try_iter() {
                     if sender
                         .send_to(tx_msg.data().as_bytes(), broadcast_addr)
@@ -192,15 +179,6 @@ impl RaceNode for StdRaceNode {
             .ok();
     }
 
-    fn set_node_address(&self, node_addr: NodeAddress) {
-        self.state
-            .0
-            .try_lock()
-            .as_mut()
-            .map(|x| x.addr = Some(node_addr))
-            .ok();
-    }
-
     fn coordinator(&self) -> Option<SystemState> {
         let nodes = self.state.0.lock().ok()?;
         nodes.coordinator
@@ -213,7 +191,6 @@ impl RaceNode for StdRaceNode {
 
 #[derive(Default)]
 struct NodesState {
-    addr: Option<NodeAddress>,
     this: Option<SystemState>,
     coordinator: Option<SystemState>,
 }
@@ -227,25 +204,13 @@ impl Default for SharedNodeState {
     }
 }
 
-fn system_state_to_msg(state: SharedNodeState) -> Option<RaceNodeMessage> {
-    let state = state.0.try_lock().ok()?;
-    let addr = state.addr?;
-    let system_state = state.this?;
-    let state = AddressedSystemState {
-        addr,
-        state: system_state,
-    };
-
-    Some(RaceNodeMessage::SystemState(state))
-}
-
 #[cfg(test)]
 mod tests {
     use std::time::Duration;
 
     use crate::app::SystemState;
     use crate::hal::gate::GateState;
-    use crate::svc::race_node::{NodeAddress, RaceNode};
+    use crate::svc::race_node::{CoordinatorBeacon, RaceNode};
     use crate::svc::std_race_node::StdRaceNodeConfig;
     use crate::svc::{Instant, StdRaceNode};
 
@@ -264,8 +229,6 @@ mod tests {
             gate_state: GateState::Inactive,
             time: Instant::from_millis(12345),
         });
-
-        node.set_node_address(NodeAddress::coordinator());
 
         node
     }
@@ -286,8 +249,6 @@ mod tests {
             time: Instant::from_millis(12345),
         });
 
-        node.set_node_address(NodeAddress::start());
-
         node
     }
 
@@ -298,15 +259,24 @@ mod tests {
         let mut coordinator_node = make_coordinator_node();
         let mut start_node = make_start_node();
 
+        coordinator_node
+            .publish(
+                CoordinatorBeacon {
+                    time: Instant::from_millis(123),
+                }
+                .into(),
+            )
+            .unwrap();
+
         std::thread::sleep(Duration::from_secs(1));
 
         let coordinator_stats = coordinator_node.stop().unwrap();
         let start_stats = start_node.stop().unwrap();
 
-        assert!(coordinator_stats.rx_count > 0);
+        assert_eq!(coordinator_stats.rx_count, 0);
         assert!(coordinator_stats.tx_count > 0);
 
         assert!(start_stats.rx_count > 0);
-        assert!(start_stats.tx_count > 0);
+        assert_eq!(start_stats.tx_count, 0);
     }
 }
