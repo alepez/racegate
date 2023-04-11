@@ -221,40 +221,47 @@ mod tests {
     use crate::svc::std_race_node::StdRaceNodeConfig;
     use crate::svc::{RaceNode, StdRaceNode};
 
-    fn coordinator_config() -> StdRaceNodeConfig {
-        StdRaceNodeConfig {
+    fn make_coordinator_node() -> StdRaceNode {
+        let cfg = StdRaceNodeConfig {
             sender_addr: "0.0.0.0:0".parse().unwrap(),
             receiver_addr: "127.0.0.10:6699".parse().unwrap(),
             broadcast_addr: "127.0.0.10:6698".parse().unwrap(),
-        }
+        };
+
+        let node = StdRaceNode::new_with_config(cfg).unwrap();
+
+        node.set_system_state(&SystemState {
+            gate_state: GateState::Inactive,
+        });
+
+        node.set_node_address(NodeAddress::coordinator());
+
+        node
     }
 
-    fn start_config() -> StdRaceNodeConfig {
-        StdRaceNodeConfig {
+    fn make_start_node() -> StdRaceNode {
+        let cfg = StdRaceNodeConfig {
             sender_addr: "0.0.0.0:0".parse().unwrap(),
             receiver_addr: "127.0.0.10:6698".parse().unwrap(),
             broadcast_addr: "127.0.0.10:6699".parse().unwrap(),
-        }
+        };
+
+        let node = StdRaceNode::new_with_config(cfg).unwrap();
+
+        node.set_system_state(&SystemState {
+            gate_state: GateState::Active,
+        });
+
+        node.set_node_address(NodeAddress::start());
+
+        node
     }
 
     #[test_log::test]
     fn test_two_nodes_can_talk() {
         log::info!("test_two_nodes_can_talk");
-        let mut coordinator_node = StdRaceNode::new_with_config(coordinator_config()).unwrap();
-
-        coordinator_node.set_system_state(&SystemState {
-            gate_state: GateState::Active,
-        });
-
-        coordinator_node.set_node_address(NodeAddress::coordinator());
-
-        let mut start_node = StdRaceNode::new_with_config(start_config()).unwrap();
-
-        start_node.set_system_state(&SystemState {
-            gate_state: GateState::Inactive,
-        });
-
-        start_node.set_node_address(NodeAddress::start());
+        let mut coordinator_node = make_coordinator_node();
+        let mut start_node = make_start_node();
 
         std::thread::sleep(Duration::from_secs(1));
 
