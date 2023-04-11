@@ -218,9 +218,14 @@ impl SharedNodeState {
 }
 
 fn update_gate(gates: &mut Gates, gate: &GateBeacon) {
-    let &GateBeacon { addr, state, .. } = gate;
+    let &GateBeacon {
+        addr,
+        state,
+        last_activation_time,
+    } = gate;
     if let Some(gate) = gates.get_mut_from_addr(addr) {
         gate.active = state == GateState::Active;
+        gate.last_activation_time = last_activation_time;
     }
 }
 
