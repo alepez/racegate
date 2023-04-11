@@ -90,7 +90,7 @@ impl<'a> App<'a> {
         };
 
         if new_state != self.state {
-            // log::info!("{:?}", &new_state);
+            log::info!("{:?}", &new_state);
             self.state = new_state;
         }
 
@@ -216,8 +216,8 @@ impl GateStartupState {
         let clock_offset = services
             .platform
             .race_node()
-            .coordinator()
-            .map(|coord| calculate_clock_offset(coord.time, time));
+            .coordinator_time()
+            .map(|coord_time| calculate_clock_offset(coord_time, time));
 
         if let Some(clock_offset) = clock_offset {
             log::info!("Gate is ready, offset: {}ms", clock_offset.as_millis());

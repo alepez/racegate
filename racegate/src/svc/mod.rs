@@ -1,6 +1,7 @@
 pub use clock::{
     calculate_clock_offset, AdjustedClock, AdjustedInstant, Clock, ClockOffset, Instant,
 };
+pub use race_node::RaceNode;
 pub use std_race_node::StdRaceNode;
 
 use crate::app::SystemState;

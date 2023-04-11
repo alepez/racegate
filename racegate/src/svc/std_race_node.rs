@@ -1,4 +1,5 @@
 use std::net::{SocketAddr, UdpSocket};
+use std::ops::DerefMut;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
@@ -9,6 +10,7 @@ use anyhow::anyhow;
 
 use crate::app::SystemState;
 use crate::svc::race_node::{FrameData, RaceNode, RaceNodeMessage};
+use crate::svc::Instant;
 
 #[derive(Default, Debug)]
 struct Stats {
@@ -98,7 +100,7 @@ impl Drop for StdRaceNode {
 
 fn spawn_thread(
     broadcast_addr: SocketAddr,
-    _state: SharedNodeState, // TODO Use to receive
+    state: SharedNodeState,
     sender: UdpSocket,
     mut receiver: UdpSocket,
     continue_running: Arc<AtomicBool>,
@@ -123,6 +125,13 @@ fn spawn_thread(
                 while let Ok(rx_msg) = receive_message(&mut receiver) {
                     log::debug!("{:?}", rx_msg);
                     stats.rx_count += 1;
+
+                    match rx_msg {
+                        RaceNodeMessage::GateBeacon(_) => { /* Ignore */ }
+                        RaceNodeMessage::CoordinatorBeacon(beacon) => {
+                            state.try_modify(|x| x.coordinator_time = Some(beacon.time))
+                        }
+                    }
                 }
 
                 if !continue_running.load(Ordering::Acquire) {
@@ -179,9 +188,9 @@ impl RaceNode for StdRaceNode {
             .ok();
     }
 
-    fn coordinator(&self) -> Option<SystemState> {
+    fn coordinator_time(&self) -> Option<Instant> {
         let nodes = self.state.0.lock().ok()?;
-        nodes.coordinator
+        nodes.coordinator_time
     }
 
     fn publish(&self, msg: RaceNodeMessage) -> anyhow::Result<()> {
@@ -192,7 +201,7 @@ impl RaceNode for StdRaceNode {
 #[derive(Default)]
 struct NodesState {
     this: Option<SystemState>,
-    coordinator: Option<SystemState>,
+    coordinator_time: Option<Instant>,
 }
 
 #[derive(Clone)]
@@ -201,6 +210,16 @@ struct SharedNodeState(Arc<Mutex<NodesState>>);
 impl Default for SharedNodeState {
     fn default() -> Self {
         SharedNodeState(Arc::new(Mutex::new(NodesState::default())))
+    }
+}
+
+impl SharedNodeState {
+    fn try_modify<F>(&self, f: F)
+    where
+        F: FnOnce(&mut NodesState),
+    {
+        // Ignore errors
+        self.0.try_lock().map(|mut x| f(x.deref_mut())).ok();
     }
 }
 
