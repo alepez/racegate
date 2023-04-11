@@ -1,5 +1,6 @@
 use std::net::{SocketAddr, UdpSocket};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Duration;
@@ -7,8 +8,9 @@ use std::time::Duration;
 use anyhow::anyhow;
 
 use crate::app::SystemState;
-use crate::svc::race_node::{AddressedSystemState, FrameData, NodeAddress};
-use crate::svc::{RaceNode, RaceNodeMessage};
+use crate::svc::race_node::{
+    AddressedSystemState, FrameData, NodeAddress, RaceNode, RaceNodeMessage,
+};
 
 #[derive(Default, Debug)]
 struct Stats {
@@ -21,6 +23,7 @@ pub struct StdRaceNode {
     thread: Option<JoinHandle<Stats>>,
     state: SharedNodeState,
     continue_running: Arc<AtomicBool>,
+    tx: mpsc::Sender<RaceNodeMessage>,
 }
 
 struct StdRaceNodeConfig {
@@ -59,7 +62,8 @@ impl StdRaceNode {
         let receiver = make_receiver(receiver_addr)?;
 
         let continue_running = Arc::new(AtomicBool::new(true));
-        let thread = spawn_thread(
+
+        let (thread, tx) = spawn_thread(
             broadcast_addr,
             state.clone(),
             sender,
@@ -71,6 +75,7 @@ impl StdRaceNode {
             thread: Some(thread),
             state,
             continue_running,
+            tx,
         })
     }
 
@@ -99,8 +104,10 @@ fn spawn_thread(
     sender: UdpSocket,
     mut receiver: UdpSocket,
     continue_running: Arc<AtomicBool>,
-) -> JoinHandle<Stats> {
-    std::thread::Builder::new()
+) -> (JoinHandle<Stats>, mpsc::Sender<RaceNodeMessage>) {
+    let (tx_sender, tx_receiver) = mpsc::channel::<RaceNodeMessage>();
+
+    let thread = std::thread::Builder::new()
         .stack_size(64 * 1024)
         .spawn(move || {
             let mut stats = Stats::default();
@@ -109,6 +116,15 @@ fn spawn_thread(
                 let tx_msg = system_state_to_msg(state.clone());
 
                 if let Some(tx_msg) = tx_msg {
+                    if sender
+                        .send_to(tx_msg.data().as_bytes(), broadcast_addr)
+                        .is_ok()
+                    {
+                        stats.tx_count += 1;
+                    }
+                }
+
+                for tx_msg in tx_receiver.try_iter() {
                     if sender
                         .send_to(tx_msg.data().as_bytes(), broadcast_addr)
                         .is_ok()
@@ -128,7 +144,9 @@ fn spawn_thread(
             }
             stats
         })
-        .unwrap()
+        .unwrap();
+
+    (thread, tx_sender)
 }
 
 fn make_receiver(receiver_addr: SocketAddr) -> anyhow::Result<UdpSocket> {
@@ -187,6 +205,10 @@ impl RaceNode for StdRaceNode {
         let nodes = self.state.0.lock().ok()?;
         nodes.coordinator
     }
+
+    fn publish(&self, msg: RaceNodeMessage) -> anyhow::Result<()> {
+        self.tx.send(msg).map_err(|_| anyhow!("Cannot publish"))
+    }
 }
 
 #[derive(Default)]
@@ -223,9 +245,9 @@ mod tests {
 
     use crate::app::SystemState;
     use crate::hal::gate::GateState;
-    use crate::svc::race_node::NodeAddress;
+    use crate::svc::race_node::{NodeAddress, RaceNode};
     use crate::svc::std_race_node::StdRaceNodeConfig;
-    use crate::svc::{Instant, RaceNode, StdRaceNode};
+    use crate::svc::{Instant, StdRaceNode};
 
     fn make_coordinator_node() -> StdRaceNode {
         // Broadcast does not work on localhost, so we just use different ports

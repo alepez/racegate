@@ -13,6 +13,8 @@ pub trait RaceNode {
     fn set_node_address(&self, node_id: NodeAddress);
 
     fn coordinator(&self) -> Option<SystemState>;
+
+    fn publish(&self, msg: RaceNodeMessage) -> anyhow::Result<()>;
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -128,6 +130,12 @@ impl TryFrom<FrameData> for CoordinatorBeacon {
         let time = Instant::from_millis(deserialize_u32(&data, 1).ok_or(Error::Unknown)? as i32);
 
         Ok(CoordinatorBeacon { time })
+    }
+}
+
+impl From<CoordinatorBeacon> for RaceNodeMessage {
+    fn from(x: CoordinatorBeacon) -> Self {
+        RaceNodeMessage::CoordinatorBeacon(x)
     }
 }
 

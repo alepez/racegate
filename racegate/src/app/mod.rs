@@ -3,6 +3,7 @@ use crate::hal::gate::GateState;
 use crate::hal::rgb_led::RgbLed;
 use crate::hal::rgb_led::RgbLedColor;
 use crate::hal::Platform;
+use crate::svc::race_node::*;
 use crate::svc::{
     calculate_clock_offset, AdjustedClock, AdjustedInstant, Clock, ClockOffset, Instant,
 };
@@ -186,6 +187,12 @@ impl CoordinatorReadyState {
     pub fn update(&mut self, services: &Services) -> AppState {
         let is_wifi_connected = services.platform.wifi().is_connected();
         let time = services.local_clock.now().expect("Cannot get time");
+
+        let beacon = CoordinatorBeacon { time };
+
+        if let Err(e) = services.platform.race_node().publish(beacon.into()) {
+            log::error!("{e}");
+        }
 
         AppState::CoordinatorReady(CoordinatorReadyState {
             is_wifi_connected,

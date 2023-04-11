@@ -2,7 +2,7 @@ use crate::hal::button::Button;
 use crate::hal::gate::Gate;
 use crate::hal::rgb_led::RgbLed;
 use crate::hal::wifi::Wifi;
-use crate::svc::{HttpServer, RaceNode};
+use crate::svc::{race_node::RaceNode, HttpServer};
 
 pub mod button;
 pub mod gate;
