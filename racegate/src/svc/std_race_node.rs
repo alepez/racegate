@@ -215,11 +215,11 @@ fn system_state_to_msg(state: SharedNodeState) -> Option<RaceNodeMessage> {
 mod tests {
     use std::time::Duration;
 
-    use crate::app::{RaceInstant, SystemState};
+    use crate::app::SystemState;
     use crate::hal::gate::GateState;
     use crate::svc::race_node::NodeAddress;
     use crate::svc::std_race_node::StdRaceNodeConfig;
-    use crate::svc::{RaceNode, StdRaceNode};
+    use crate::svc::{RaceInstant, RaceNode, StdRaceNode};
 
     fn make_coordinator_node() -> StdRaceNode {
         // Broadcast does not work on localhost, so we just use different ports

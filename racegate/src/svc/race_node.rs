@@ -1,5 +1,6 @@
-use crate::app::{RaceInstant, SystemState};
+use crate::app::SystemState;
 use crate::hal::gate::GateState::{Active, Inactive};
+use crate::svc::clock::RaceInstant;
 
 pub enum Error {
     Unknown,
