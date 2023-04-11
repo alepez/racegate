@@ -72,12 +72,6 @@ impl<'a> App<'a> {
         }
 
         self.services.led_controller.update(&self.state);
-
-        // TODO Publish state to http
-        // self.services
-        //     .platform
-        //     .http_server()
-        //     .set_system_state(&system_state);
     }
 }
 
@@ -164,6 +158,15 @@ impl CoordinatorReadyState {
         if let Err(e) = services.platform.race_node().publish(beacon.into()) {
             log::error!("{e}");
         }
+
+        let system_state = SystemState {
+            time: CoordinatedInstant::from_millis(time.as_millis()),
+        };
+
+        services
+            .platform
+            .http_server()
+            .set_system_state(&system_state);
 
         AppState::CoordinatorReady(CoordinatorReadyState {
             is_wifi_connected,

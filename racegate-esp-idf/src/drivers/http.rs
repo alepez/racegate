@@ -10,21 +10,23 @@ use esp_idf_svc::http::server::{Configuration, EspHttpServer};
 use esp_idf_sys::EspError;
 use racegate::app::SystemState;
 
+struct StateSender {
+    ws: EspHttpWsDetachedSender,
+}
+
 #[derive(Clone)]
-struct StateSenders(Arc<Mutex<VecDeque<EspHttpWsDetachedSender>>>);
+struct StateSenders(Arc<Mutex<VecDeque<StateSender>>>);
 
 impl StateSenders {
     fn new() -> Self {
-        Self(Arc::new(Mutex::new(
-            VecDeque::<EspHttpWsDetachedSender>::new(),
-        )))
+        Self(Arc::new(Mutex::new(VecDeque::<StateSender>::new())))
     }
 
-    fn add(&self, x: EspHttpWsDetachedSender) {
+    fn add(&self, ws: EspHttpWsDetachedSender) {
         log::info!("detached sender created");
         if let Ok(mut senders) = self.0.lock() {
             log::info!("detached sender added");
-            senders.push_back(x);
+            senders.push_back(StateSender { ws });
             log::info!("detached senders count: {}", senders.len());
         }
     }
@@ -37,9 +39,9 @@ impl StateSenders {
 
         if let Ok(mut senders) = self.0.lock() {
             // FIXME Clean up closed
-            let senders: &mut VecDeque<EspHttpWsDetachedSender> = &mut senders;
-            for sender in senders.iter_mut().filter(|x| !x.is_closed()) {
-                if sender.send(frame_type, data).is_err() {
+            let senders: &mut VecDeque<StateSender> = &mut senders;
+            for sender in senders.iter_mut().filter(|x| !x.ws.is_closed()) {
+                if sender.ws.send(frame_type, data).is_err() {
                     log::error!("error sending gate status");
                 }
             }
