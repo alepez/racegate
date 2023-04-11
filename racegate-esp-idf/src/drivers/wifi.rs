@@ -9,7 +9,6 @@ use esp_idf_hal::modem::Modem;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::wifi::WifiWait;
-
 use racegate::hal::wifi::{Wifi, WifiConfig};
 
 pub struct EspWifi {
@@ -92,7 +91,10 @@ impl Wifi for EspWifi {
 
     fn is_connected(&self) -> bool {
         if let Ok(esp_wifi) = self.esp_wifi.try_borrow() {
-            esp_wifi.driver().is_connected().unwrap_or(false)
+            let connected = esp_wifi.driver().is_connected().unwrap_or(false);
+            let ap_is_up = esp_wifi.ap_netif().is_up().unwrap_or(false);
+            let sta_is_up = esp_wifi.sta_netif().is_up().unwrap_or(false);
+            connected && (ap_is_up || sta_is_up)
         } else {
             false
         }
