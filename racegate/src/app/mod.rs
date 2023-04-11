@@ -220,6 +220,7 @@ impl GateStartupState {
                 gate_state,
                 clock_offset,
                 coordinated_time,
+                last_activation_time: None,
             })
         } else {
             AppState::GateStartup(GateStartupState {
@@ -236,21 +237,27 @@ struct GateReadyState {
     gate_state: GateState,
     clock_offset: LocalOffset,
     coordinated_time: CoordinatedInstant,
+    last_activation_time: Option<CoordinatedInstant>,
 }
 
 impl GateReadyState {
     pub fn update(&mut self, services: &Services) -> AppState {
         let is_wifi_connected = services.platform.wifi().is_connected();
         let gate_state = services.platform.gate().state();
-        let time = services.local_clock.now().expect("Cannot get time");
         let clock_offset = self.clock_offset;
         let clock = CoordinatedClock::new(&services.local_clock, clock_offset);
         let coordinated_time = clock.now();
 
+        let last_activation_time = if gate_state == GateState::Active {
+            Some(coordinated_time)
+        } else {
+            self.last_activation_time
+        };
+
         let beacon = GateBeacon {
             addr: NodeAddress::start(), // TODO
             state: gate_state,
-            local_time: time,
+            last_activation_time,
         };
 
         if let Err(e) = services.platform.race_node().publish(beacon.into()) {
@@ -262,6 +269,7 @@ impl GateReadyState {
             gate_state,
             clock_offset,
             coordinated_time,
+            last_activation_time,
         })
     }
 }

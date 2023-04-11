@@ -1,6 +1,5 @@
 use crate::app::gates::Gates;
 use crate::hal::gate::GateState;
-use crate::svc::clock::LocalInstant;
 use crate::svc::CoordinatedInstant;
 
 #[derive(Debug)]
@@ -83,7 +82,7 @@ impl From<[u8; 16]> for FrameData {
 pub struct GateBeacon {
     pub addr: NodeAddress,
     pub state: GateState,
-    pub local_time: LocalInstant,
+    pub last_activation_time: Option<CoordinatedInstant>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -131,13 +130,18 @@ impl TryFrom<FrameData> for GateBeacon {
             _ => GateState::Inactive,
         };
 
-        let time =
-            LocalInstant::from_millis(deserialize_u32(&data, 3).ok_or(Error::Unknown)? as i32);
+        let last_activation_time = deserialize_u32(&data, 3).ok_or(Error::Unknown)?;
+
+        let last_activation_time = if last_activation_time == 0xFFFFFFFF {
+            None
+        } else {
+            Some(CoordinatedInstant::from_millis(last_activation_time as i32))
+        };
 
         Ok(GateBeacon {
             addr,
             state: gate_state,
-            local_time: time,
+            last_activation_time,
         })
     }
 }
@@ -169,7 +173,12 @@ impl From<GateBeacon> for RaceNodeMessage {
 fn serialize_system_state(x: &GateBeacon, data: &mut FrameData) {
     data.0[1] = x.addr.0;
     data.0[2] = x.state as u8;
-    serialize_u32(x.local_time.as_millis() as u32, data, 3);
+
+    if let Some(last_activation_time) = x.last_activation_time {
+        serialize_u32(last_activation_time.as_millis() as u32, data, 3);
+    } else {
+        serialize_u32(0xFFFFFFFF, data, 3);
+    }
 }
 
 fn serialize_coordinator_beacon(x: &CoordinatorBeacon, data: &mut FrameData) {
@@ -228,7 +237,7 @@ mod tests {
         let x = GateBeacon {
             addr: NodeAddress::start(),
             state: GateState::Active,
-            local_time: LocalInstant::from_millis(12345),
+            last_activation_time: Some(CoordinatedInstant::from_millis(12345)),
         };
 
         let msg = RaceNodeMessage::GateBeacon(x);

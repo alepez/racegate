@@ -8,8 +8,10 @@ GateBeacon(
             1,
         ),
         state: Active,
-        local_time: LocalInstant(
-            12345,
+        last_activation_time: Some(
+            CoordinatedInstant(
+                12345,
+            ),
         ),
     },
 )
