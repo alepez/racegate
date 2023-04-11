@@ -25,8 +25,6 @@ impl DipSwitch for EspDipSwitch {
         let p1 = self.pins[1].is_low() as u8;
         let p2 = self.pins[2].is_low() as u8;
 
-        log::info!("{p0} {p1} {p2}");
-
         NodeAddress::from((p0 << 2) | (p1 << 1) | p2)
     }
 }
