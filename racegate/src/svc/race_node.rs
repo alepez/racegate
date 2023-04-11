@@ -2,6 +2,7 @@ use crate::app::SystemState;
 use crate::hal::gate::GateState::{Active, Inactive};
 use crate::svc::clock::Instant;
 
+#[derive(Debug)]
 pub enum Error {
     Unknown,
 }
@@ -63,18 +64,22 @@ pub struct AddressedSystemState {
     pub state: SystemState,
 }
 
+#[derive(Debug, Copy, Clone)]
+pub struct CoordinatorBeacon {
+    pub time: Instant,
+}
+
 #[derive(Debug)]
 pub enum RaceNodeMessage {
     SystemState(AddressedSystemState),
+    CoordinatorBeacon(CoordinatorBeacon),
 }
 
 impl RaceNodeMessage {
     pub const FRAME_SIZE: usize = 16;
 
     pub fn data(&self) -> FrameData {
-        match self {
-            RaceNodeMessage::SystemState(x) => x.into(),
-        }
+        FrameData::from(self)
     }
 }
 
@@ -86,6 +91,9 @@ impl TryFrom<FrameData> for RaceNodeMessage {
         match msg_id {
             1 => Ok(RaceNodeMessage::SystemState(
                 AddressedSystemState::try_from(data)?,
+            )),
+            2 => Ok(RaceNodeMessage::CoordinatorBeacon(
+                CoordinatorBeacon::try_from(data)?,
             )),
             _ => Err(Error::Unknown),
         }
@@ -121,31 +129,59 @@ impl TryFrom<FrameData> for AddressedSystemState {
     }
 }
 
+impl TryFrom<FrameData> for CoordinatorBeacon {
+    type Error = Error;
+
+    fn try_from(data: FrameData) -> Result<CoordinatorBeacon, Error> {
+        let time = {
+            let d0 = *data.0.get(1).ok_or(Error::Unknown)?;
+            let d1 = *data.0.get(2).ok_or(Error::Unknown)?;
+            let d2 = *data.0.get(3).ok_or(Error::Unknown)?;
+            let d3 = *data.0.get(4).ok_or(Error::Unknown)?;
+            let time_ms =
+                ((d0 as u32) << 24) | ((d1 as u32) << 16) | ((d2 as u32) << 8) | (d3 as u32);
+            Instant::from_millis(time_ms as i32)
+        };
+
+        Ok(CoordinatorBeacon { time })
+    }
+}
+
 fn serialize_system_state(x: &AddressedSystemState, data: &mut FrameData) {
     data.0[1] = x.addr.0;
     data.0[2] = x.state.gate_state as u8;
-    data.0[3] = ((x.state.time.as_millis() >> 24) & 0xFF) as u8;
-    data.0[4] = ((x.state.time.as_millis() >> 16) & 0xFF) as u8;
-    data.0[5] = ((x.state.time.as_millis() >> 8) & 0xFF) as u8;
-    data.0[6] = ((x.state.time.as_millis()) & 0xFF) as u8;
+    serialize_u32(x.state.time.as_millis() as u32, data, 3);
 }
 
-impl From<&AddressedSystemState> for FrameData {
-    fn from(value: &AddressedSystemState) -> Self {
-        FrameData::from(&RaceNodeMessage::SystemState(*value))
-    }
+fn serialize_coordinator_beacon(x: &CoordinatorBeacon, data: &mut FrameData) {
+    serialize_u32(x.time.as_millis() as u32, data, 1);
+}
+
+fn serialize_msg_id(msg: &RaceNodeMessage, data: &mut FrameData) {
+    let msg_id = match msg {
+        RaceNodeMessage::SystemState(_) => 1,
+        RaceNodeMessage::CoordinatorBeacon(_) => 2,
+    };
+
+    data.0[0] = msg_id;
+}
+
+fn serialize_u32(x: u32, data: &mut FrameData, offset: usize) {
+    data.0[offset] = ((x >> 24) & 0xFF) as u8;
+    data.0[offset + 1] = ((x >> 16) & 0xFF) as u8;
+    data.0[offset + 2] = ((x >> 8) & 0xFF) as u8;
+    data.0[offset + 3] = ((x) & 0xFF) as u8;
 }
 
 impl From<&RaceNodeMessage> for FrameData {
     fn from(msg: &RaceNodeMessage) -> Self {
-        let msg_id = match msg {
-            RaceNodeMessage::SystemState(_) => 1,
-        };
+        let mut data = FrameData::from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
-        let mut data = FrameData::from([msg_id, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        serialize_msg_id(msg, &mut data);
 
         match msg {
             RaceNodeMessage::SystemState(x) => serialize_system_state(x, &mut data),
+            RaceNodeMessage::CoordinatorBeacon(x) => serialize_coordinator_beacon(x, &mut data),
         };
 
         data
@@ -155,6 +191,7 @@ impl From<&RaceNodeMessage> for FrameData {
 #[cfg(test)]
 mod tests {
     use crate::hal::gate::GateState;
+    use insta::assert_debug_snapshot;
 
     use super::*;
 
@@ -170,8 +207,21 @@ mod tests {
 
         let msg = RaceNodeMessage::SystemState(x);
         let data = msg.data();
-        let data = data.as_bytes();
 
-        insta::assert_debug_snapshot!(data);
+        assert_debug_snapshot!(data.as_bytes());
+        assert_debug_snapshot!(RaceNodeMessage::try_from(data).unwrap());
+    }
+
+    #[test]
+    fn test_serialize_coordinator_beacon() {
+        let x = CoordinatorBeacon {
+            time: Instant::from_millis(2_123_456_789),
+        };
+
+        let msg = RaceNodeMessage::CoordinatorBeacon(x);
+        let data = msg.data();
+
+        assert_debug_snapshot!(data.as_bytes());
+        assert_debug_snapshot!(RaceNodeMessage::try_from(data).unwrap());
     }
 }

@@ -1,0 +1,17 @@
+---
+source: src/svc/race_node.rs
+expression: "RaceNodeMessage::try_from(data).unwrap()"
+---
+SystemState(
+    AddressedSystemState {
+        addr: NodeAddress(
+            1,
+        ),
+        state: SystemState {
+            gate_state: Active,
+            time: Instant(
+                12345,
+            ),
+        },
+    },
+)
