@@ -22,6 +22,10 @@ impl From<&AppState> for SystemState {
                 gate_state: GateState::Inactive,
                 time: x.time,
             },
+            AppState::GateStartup(x) => SystemState {
+                gate_state: GateState::Inactive,
+                time: x.time,
+            },
             AppState::Ready(x) => SystemState {
                 gate_state: x.gate_state,
                 time: x.time,
@@ -40,6 +44,7 @@ struct Services<'a> {
 enum AppState {
     Init(InitAppState),
     CoordinatorReady(CoordinatorReadyState),
+    GateStartup(GateStartupState),
     Ready(ReadyAppState),
 }
 
@@ -77,6 +82,7 @@ impl<'a> App<'a> {
         let new_state = match self.state {
             AppState::Init(mut state) => state.update(&self.services),
             AppState::CoordinatorReady(mut state) => state.update(&self.services),
+            AppState::GateStartup(mut state) => state.update(&self.services),
             AppState::Ready(mut state) => state.update(&self.services),
         };
 
@@ -110,6 +116,7 @@ impl<'a> LedController<'a> {
         let color = match app_state {
             AppState::Init(_) => 0xFF0000,
             AppState::CoordinatorReady(_) => 0xFFFFFF,
+            AppState::GateStartup(_) => 0xFFFF00,
             AppState::Ready(state) => {
                 if state.gate_state == GateState::Active {
                     0x008080
@@ -140,7 +147,7 @@ impl InitAppState {
         let button_state = services.platform.button().state();
         let time = services.race_clock.now().expect("Cannot get time");
 
-        let ready_as_gate = is_wifi_connected
+        let startup_as_gate = is_wifi_connected
             && (button_state != ButtonState::Pressed)
             && gate_state != GateState::Active;
 
@@ -149,8 +156,9 @@ impl InitAppState {
             && (button_state != ButtonState::Pressed)
             && gate_state == GateState::Active;
 
-        if ready_as_gate {
-            AppState::Ready(ReadyAppState {
+        if startup_as_gate {
+            log::info!("This is a gate");
+            AppState::GateStartup(GateStartupState {
                 is_wifi_connected,
                 gate_state,
                 button_state,
@@ -186,6 +194,32 @@ impl CoordinatorReadyState {
         let time = services.race_clock.now().expect("Cannot get time");
 
         AppState::CoordinatorReady(CoordinatorReadyState {
+            is_wifi_connected,
+            gate_state,
+            button_state,
+            time,
+        })
+    }
+}
+
+#[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
+struct GateStartupState {
+    is_wifi_connected: bool,
+    gate_state: GateState,
+    button_state: ButtonState,
+    time: Instant,
+}
+
+impl GateStartupState {
+    pub fn update(&mut self, services: &Services) -> AppState {
+        let is_wifi_connected = services.platform.wifi().is_connected();
+        let gate_state = services.platform.gate().state();
+        let button_state = services.platform.button().state();
+        let time = services.race_clock.now().expect("Cannot get time");
+
+        // TODO switch to Ready when time is synchronized with coordinator
+
+        AppState::GateStartup(GateStartupState {
             is_wifi_connected,
             gate_state,
             button_state,
