@@ -9,6 +9,11 @@ use crate::svc::{
     LocalOffset,
 };
 
+#[derive(Default, Clone, Eq, PartialEq)]
+pub struct SystemState {
+    time: CoordinatedInstant,
+}
+
 struct Services<'a> {
     led_controller: LedController<'a>,
     platform: &'a dyn Platform,

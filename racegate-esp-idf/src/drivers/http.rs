@@ -9,12 +9,11 @@ use esp_idf_svc::http::server::ws::EspHttpWsDetachedSender;
 use esp_idf_svc::http::server::{Configuration, EspHttpServer};
 use esp_idf_sys::EspError;
 use racegate::app::SystemState;
-use racegate::hal::gate::GateState;
 
 #[derive(Clone)]
-struct GateSenders(Arc<Mutex<VecDeque<EspHttpWsDetachedSender>>>);
+struct StateSenders(Arc<Mutex<VecDeque<EspHttpWsDetachedSender>>>);
 
-impl GateSenders {
+impl StateSenders {
     fn new() -> Self {
         Self(Arc::new(Mutex::new(
             VecDeque::<EspHttpWsDetachedSender>::new(),
@@ -30,11 +29,8 @@ impl GateSenders {
         }
     }
 
-    fn send(&self, gate_state: GateState) {
-        let data = match gate_state {
-            GateState::Inactive => b"0",
-            GateState::Active => b"1",
-        };
+    fn send(&self, _system_state: &SystemState) {
+        let data = b"0"; // FIXME
 
         let frame_type = FrameType::Binary(false);
 
@@ -54,12 +50,12 @@ pub struct HttpServer {
     #[allow(dead_code)]
     esp_http_server: EspHttpServer,
     app_state: Arc<Mutex<SystemState>>,
-    gate_senders: GateSenders,
+    state_senders: StateSenders,
 }
 
-fn add_handlers(server: &mut EspHttpServer) -> anyhow::Result<GateSenders> {
-    let gate_senders = GateSenders::new();
-    let gate_senders_copy = gate_senders.clone();
+fn add_handlers(server: &mut EspHttpServer) -> anyhow::Result<StateSenders> {
+    let state_senders = StateSenders::new();
+    let state_senders_copy = state_senders.clone();
 
     server.fn_handler("/", Method::Get, |request| {
         let mut response = request.into_ok_response()?;
@@ -80,16 +76,16 @@ fn add_handlers(server: &mut EspHttpServer) -> anyhow::Result<GateSenders> {
         Ok(())
     })?;
 
-    server.ws_handler("/gate", move |conn| -> Result<(), EspError> {
+    server.ws_handler("/state", move |conn| -> Result<(), EspError> {
         if conn.is_new() {
             if let Ok(detached_sender) = conn.create_detached_sender() {
-                gate_senders_copy.add(detached_sender);
+                state_senders_copy.add(detached_sender);
             }
         }
         Ok(())
     })?;
 
-    Ok(gate_senders)
+    Ok(state_senders)
 }
 
 impl HttpServer {
@@ -97,11 +93,11 @@ impl HttpServer {
         let conf = Configuration::default();
         let mut esp_http_server = EspHttpServer::new(&conf)?;
         let app_state = Arc::new(Mutex::new(Default::default()));
-        let gate_senders = add_handlers(&mut esp_http_server)?;
+        let state_senders = add_handlers(&mut esp_http_server)?;
         Ok(HttpServer {
             esp_http_server,
             app_state,
-            gate_senders,
+            state_senders,
         })
     }
 }
@@ -112,11 +108,11 @@ impl racegate::svc::HttpServer for HttpServer {
             .try_lock()
             .as_mut()
             .map(|x| {
-                if state.gate_state != x.gate_state {
-                    self.gate_senders.send(state.gate_state);
+                if x.ne(state) {
+                    self.state_senders.send(state);
                 }
 
-                **x = *state;
+                **x = state.clone();
             })
             .ok();
     }
