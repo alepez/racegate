@@ -21,7 +21,7 @@ pub struct NodeAddress(u8);
 
 const COORDINATOR_ADDRESS: NodeAddress = NodeAddress(0);
 const START_ADDRESS: NodeAddress = NodeAddress(1);
-const FINISH_ADDRESS: NodeAddress = NodeAddress(15);
+const FINISH_ADDRESS: NodeAddress = NodeAddress(4);
 
 impl NodeAddress {
     pub const fn coordinator() -> Self {

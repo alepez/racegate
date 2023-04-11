@@ -7,7 +7,7 @@ pub struct Gate {
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Default, Clone, Eq, PartialEq)]
 pub struct Gates {
-    items: [Gate; 16],
+    items: [Gate; 4],
 }
 
 impl Gates {
