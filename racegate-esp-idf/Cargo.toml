@@ -17,6 +17,8 @@ esp-idf-svc = { version = "0.45", features = ["experimental", "alloc"] }
 esp-idf-sys = { version = "0.32", features = ["binstart", "native"] }
 log = "0.4"
 racegate = { path = "../racegate" }
+serde = { version = "1.0.160", features = ["serde_derive"] }
+serde_json = "1.0.95"
 
 [build-dependencies]
 anyhow = "1"

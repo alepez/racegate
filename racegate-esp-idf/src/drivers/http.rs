@@ -29,15 +29,16 @@ impl StateSenders {
         }
     }
 
-    fn send(&self, _system_state: &SystemState) {
-        let data = b"0"; // FIXME
-
+    fn send(&self, system_state: &SystemState) {
         let frame_type = FrameType::Binary(false);
+
+        let json = serde_json::to_vec(&system_state).unwrap();
+        let data = json.as_slice();
 
         if let Ok(mut senders) = self.0.lock() {
             // FIXME Clean up closed
             let senders: &mut VecDeque<EspHttpWsDetachedSender> = &mut senders;
-            for sender in senders.into_iter().filter(|x| !x.is_closed()) {
+            for sender in senders.iter_mut().filter(|x| !x.is_closed()) {
                 if sender.send(frame_type, data).is_err() {
                     log::error!("error sending gate status");
                 }

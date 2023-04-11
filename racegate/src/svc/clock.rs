@@ -37,7 +37,7 @@ impl LocalClock {
     }
 }
 
-#[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Default, Debug, Copy, Clone, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CoordinatedInstant(i32);
 
 impl CoordinatedInstant {

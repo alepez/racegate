@@ -9,7 +9,7 @@ use crate::svc::{
     LocalOffset,
 };
 
-#[derive(Default, Clone, Eq, PartialEq)]
+#[derive(Default, Clone, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SystemState {
     time: CoordinatedInstant,
 }
