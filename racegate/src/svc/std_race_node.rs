@@ -215,7 +215,7 @@ fn system_state_to_msg(state: SharedNodeState) -> Option<RaceNodeMessage> {
 mod tests {
     use std::time::Duration;
 
-    use crate::app::SystemState;
+    use crate::app::{RaceInstant, SystemState};
     use crate::hal::gate::GateState;
     use crate::svc::race_node::NodeAddress;
     use crate::svc::std_race_node::StdRaceNodeConfig;
@@ -234,6 +234,7 @@ mod tests {
 
         node.set_system_state(&SystemState {
             gate_state: GateState::Inactive,
+            time: RaceInstant::from_millis(12345),
         });
 
         node.set_node_address(NodeAddress::coordinator());
@@ -254,6 +255,7 @@ mod tests {
 
         node.set_system_state(&SystemState {
             gate_state: GateState::Active,
+            time: RaceInstant::from_millis(12345),
         });
 
         node.set_node_address(NodeAddress::start());

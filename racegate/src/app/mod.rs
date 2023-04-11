@@ -1,22 +1,27 @@
+use std::time::Instant;
+
 use crate::hal::button::ButtonState;
 use crate::hal::gate::GateState;
 use crate::hal::rgb_led::RgbLed;
 use crate::hal::rgb_led::RgbLedColor;
 use crate::hal::Platform;
 
-#[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct SystemState {
     pub gate_state: GateState,
+    pub time: RaceInstant,
 }
 
 impl From<&AppState> for SystemState {
     fn from(value: &AppState) -> Self {
         match value {
-            AppState::Init(_) => SystemState {
+            AppState::Init(x) => SystemState {
                 gate_state: GateState::Inactive,
+                time: x.time,
             },
             AppState::Ready(x) => SystemState {
                 gate_state: x.gate_state,
+                time: x.time,
             },
         }
     }
@@ -25,6 +30,7 @@ impl From<&AppState> for SystemState {
 struct Services<'a> {
     led_controller: LedController<'a>,
     platform: &'a dyn Platform,
+    race_clock: RaceClock,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
@@ -50,9 +56,12 @@ impl<'a> App<'a> {
             led: platform.rgb_led(),
         };
 
+        let race_clock = RaceClock::new();
+
         let services = Services {
             led_controller,
             platform,
+            race_clock,
         };
 
         let state = AppState::default();
@@ -115,6 +124,7 @@ struct InitAppState {
     is_wifi_connected: bool,
     gate_state: GateState,
     button_state: ButtonState,
+    time: RaceInstant,
 }
 
 impl InitAppState {
@@ -122,6 +132,7 @@ impl InitAppState {
         let is_wifi_connected = services.platform.wifi().is_connected();
         let gate_state = services.platform.gate().state();
         let button_state = services.platform.button().state();
+        let time = services.race_clock.now().expect("Cannot get time");
 
         if is_wifi_connected
             && (button_state != ButtonState::Pressed)
@@ -131,6 +142,7 @@ impl InitAppState {
                 is_wifi_connected,
                 gate_state,
                 button_state,
+                time,
             })
         } else {
             AppState::Init(*self)
@@ -138,11 +150,12 @@ impl InitAppState {
     }
 }
 
-#[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 struct ReadyAppState {
     is_wifi_connected: bool,
     gate_state: GateState,
     button_state: ButtonState,
+    time: RaceInstant,
 }
 
 impl ReadyAppState {
@@ -150,12 +163,47 @@ impl ReadyAppState {
         let is_wifi_connected = services.platform.wifi().is_connected();
         let gate_state = services.platform.gate().state();
         let button_state = services.platform.button().state();
+        let time = services.race_clock.now().expect("Cannot get time");
 
         AppState::Ready(ReadyAppState {
             is_wifi_connected,
             gate_state,
             button_state,
+            time,
         })
+    }
+}
+
+#[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
+pub struct RaceInstant(u16);
+
+impl RaceInstant {
+    pub fn from_millis(ms: u16) -> Self {
+        Self(ms)
+    }
+}
+
+struct RaceClock {
+    start: Instant,
+}
+
+impl RaceClock {
+    fn new() -> Self {
+        Self {
+            start: Instant::now(),
+        }
+    }
+
+    fn now(&self) -> Option<RaceInstant> {
+        let t = Instant::now().checked_duration_since(self.start)?;
+        let t_ms = t.as_millis();
+
+        // milliseconds, 16 bits, max 18 hours
+        if t_ms < (u16::MAX as u128) {
+            Some(RaceInstant(t_ms as u16))
+        } else {
+            None
+        }
     }
 }
 

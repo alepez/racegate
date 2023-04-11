@@ -1,4 +1,4 @@
-use crate::app::SystemState;
+use crate::app::{RaceInstant, SystemState};
 use crate::hal::gate::GateState::{Active, Inactive};
 
 pub enum Error {
@@ -102,7 +102,14 @@ impl TryFrom<FrameData> for AddressedSystemState {
             _ => Inactive,
         };
 
-        let state = SystemState { gate_state };
+        let time = {
+            let high = *data.0.get(3).ok_or(Error::Unknown)?;
+            let low = *data.0.get(4).ok_or(Error::Unknown)?;
+            let time_ms = (high as u16) << 8 | (low as u16);
+            RaceInstant::from_millis(time_ms)
+        };
+
+        let state = SystemState { gate_state, time };
 
         Ok(AddressedSystemState { addr, state })
     }
@@ -147,6 +154,7 @@ mod tests {
             addr: NodeAddress::start(),
             state: SystemState {
                 gate_state: GateState::Active,
+                time: RaceInstant::from_millis(12345),
             },
         };
 
