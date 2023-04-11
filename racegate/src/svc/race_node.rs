@@ -1,3 +1,4 @@
+use crate::app::gates::Gates;
 use crate::hal::gate::GateState;
 use crate::svc::clock::LocalInstant;
 use crate::svc::CoordinatedInstant;
@@ -11,34 +12,40 @@ pub trait RaceNode {
     fn coordinator_time(&self) -> Option<CoordinatedInstant>;
 
     fn publish(&self, msg: RaceNodeMessage) -> anyhow::Result<()>;
+
+    fn gates(&self) -> Gates;
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct NodeAddress(u8);
+
+const COORDINATOR_ADDRESS: NodeAddress = NodeAddress(0);
+const START_ADDRESS: NodeAddress = NodeAddress(1);
+const FINISH_ADDRESS: NodeAddress = NodeAddress(15);
 
 impl NodeAddress {
     pub fn coordinator() -> Self {
-        Self(0)
+        COORDINATOR_ADDRESS
     }
 
     pub fn start() -> Self {
-        Self(1)
+        START_ADDRESS
     }
 
     pub fn finish() -> Self {
-        Self(32)
+        FINISH_ADDRESS
     }
 
     pub fn is_coordinator(&self) -> bool {
-        self.0 == 0
+        *self == COORDINATOR_ADDRESS
     }
 
     pub fn is_start(&self) -> bool {
-        self.0 == 1
+        *self == START_ADDRESS
     }
 
     pub fn is_finish(&self) -> bool {
-        self.0 == 32
+        *self == FINISH_ADDRESS
     }
 }
 
@@ -218,7 +225,7 @@ mod tests {
     #[test]
     fn test_serialize_coordinator_beacon() {
         let x = CoordinatorBeacon {
-            time: LocalInstant::from_millis(2_123_456_789),
+            time: CoordinatedInstant::from_millis(2_123_456_789),
         };
 
         let msg = RaceNodeMessage::CoordinatorBeacon(x);

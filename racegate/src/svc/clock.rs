@@ -94,7 +94,7 @@ mod tests {
 
     #[test]
     fn test_calculate_clock_offset_when_coordinator_started_before_gate() {
-        let coord_time = LocalInstant::from_millis(60_000);
+        let coord_time = CoordinatedInstant::from_millis(60_000);
         let local_time = LocalInstant::from_millis(10_000);
         let offset = calculate_clock_offset(coord_time, local_time);
         assert_eq!(offset, LocalOffset::from_millis(50_000));
@@ -102,7 +102,7 @@ mod tests {
 
     #[test]
     fn test_calculate_clock_offset_when_coordinator_started_after_gate() {
-        let coord_time = LocalInstant::from_millis(60_000);
+        let coord_time = CoordinatedInstant::from_millis(60_000);
         let local_time = LocalInstant::from_millis(110_000);
         let offset = calculate_clock_offset(coord_time, local_time);
         assert_eq!(offset, LocalOffset::from_millis(-50_000));

@@ -1,3 +1,6 @@
+pub mod gates;
+
+use crate::app::gates::Gates;
 use crate::hal::button::ButtonState;
 use crate::hal::gate::GateState;
 use crate::hal::rgb_led::RgbLed;
@@ -12,6 +15,7 @@ use crate::svc::{
 #[derive(Default, Clone, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SystemState {
     time: CoordinatedInstant,
+    gates: Gates,
 }
 
 struct Services<'a> {
@@ -163,7 +167,8 @@ impl CoordinatorReadyState {
             log::error!("{e}");
         }
 
-        let system_state = SystemState { time };
+        let gates = services.platform.race_node().gates();
+        let system_state = SystemState { time, gates };
 
         services
             .platform

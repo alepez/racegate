@@ -8,6 +8,7 @@ use std::time::Duration;
 
 use anyhow::anyhow;
 
+use crate::app::gates::Gates;
 use crate::svc::race_node::{FrameData, RaceNode, RaceNodeMessage};
 use crate::svc::CoordinatedInstant;
 
@@ -183,6 +184,10 @@ impl RaceNode for StdRaceNode {
     fn publish(&self, msg: RaceNodeMessage) -> anyhow::Result<()> {
         self.tx.send(msg).map_err(|_| anyhow!("Cannot publish"))
     }
+
+    fn gates(&self) -> Gates {
+        Gates::default() // TODO
+    }
 }
 
 #[derive(Default)]
@@ -215,7 +220,7 @@ mod tests {
 
     use crate::svc::race_node::{CoordinatorBeacon, RaceNode};
     use crate::svc::std_race_node::StdRaceNodeConfig;
-    use crate::svc::{LocalInstant, StdRaceNode};
+    use crate::svc::{CoordinatedInstant, StdRaceNode};
 
     fn make_coordinator_node() -> StdRaceNode {
         // Broadcast does not work on localhost, so we just use different ports
@@ -255,7 +260,7 @@ mod tests {
         coordinator_node
             .publish(
                 CoordinatorBeacon {
-                    time: LocalInstant::from_millis(123),
+                    time: CoordinatedInstant::from_millis(123),
                 }
                 .into(),
             )
