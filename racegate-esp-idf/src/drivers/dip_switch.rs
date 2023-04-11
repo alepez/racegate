@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use esp_idf_hal::gpio::{AnyInputPin, Input, PinDriver};
 use racegate::hal::dip_switch::DipSwitch;
 use racegate::svc::race_node::NodeAddress;
@@ -7,17 +6,15 @@ pub struct EspDipSwitch {
     pins: [PinDriver<'static, AnyInputPin, Input>; 3],
 }
 
+fn pin_to_driver(pin: AnyInputPin) -> PinDriver<'static, AnyInputPin, Input> {
+    PinDriver::input(pin).unwrap().into_input().unwrap()
+}
+
 impl EspDipSwitch {
     pub fn new(pins: [AnyInputPin; 3]) -> anyhow::Result<EspDipSwitch> {
-        let mut pins = pins
-            .into_iter()
-            .map(|pin| PinDriver::input(pin).unwrap().into_input().unwrap());
+        let [p0, p1, p2] = pins;
         Ok(Self {
-            pins: [
-                pins.next().ok_or(anyhow!("Invalid pin"))?,
-                pins.next().ok_or(anyhow!("Invalid pin"))?,
-                pins.next().ok_or(anyhow!("Invalid pin"))?,
-            ],
+            pins: [pin_to_driver(p0), pin_to_driver(p1), pin_to_driver(p2)],
         })
     }
 }
