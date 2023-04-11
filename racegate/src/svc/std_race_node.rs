@@ -219,7 +219,7 @@ mod tests {
     use crate::hal::gate::GateState;
     use crate::svc::race_node::NodeAddress;
     use crate::svc::std_race_node::StdRaceNodeConfig;
-    use crate::svc::{RaceInstant, RaceNode, StdRaceNode};
+    use crate::svc::{Instant, RaceNode, StdRaceNode};
 
     fn make_coordinator_node() -> StdRaceNode {
         // Broadcast does not work on localhost, so we just use different ports
@@ -234,7 +234,7 @@ mod tests {
 
         node.set_system_state(&SystemState {
             gate_state: GateState::Inactive,
-            time: RaceInstant::from_millis(12345),
+            time: Instant::from_millis(12345),
         });
 
         node.set_node_address(NodeAddress::coordinator());
@@ -255,7 +255,7 @@ mod tests {
 
         node.set_system_state(&SystemState {
             gate_state: GateState::Active,
-            time: RaceInstant::from_millis(12345),
+            time: Instant::from_millis(12345),
         });
 
         node.set_node_address(NodeAddress::start());

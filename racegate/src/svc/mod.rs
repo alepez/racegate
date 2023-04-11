@@ -1,4 +1,4 @@
-pub use clock::{RaceClock, RaceInstant};
+pub use clock::{Clock, Instant};
 pub use race_node::RaceNode;
 pub use race_node::RaceNodeMessage;
 pub use std_race_node::StdRaceNode;

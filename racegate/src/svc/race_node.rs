@@ -1,6 +1,6 @@
 use crate::app::SystemState;
 use crate::hal::gate::GateState::{Active, Inactive};
-use crate::svc::clock::RaceInstant;
+use crate::svc::clock::Instant;
 
 pub enum Error {
     Unknown,
@@ -107,7 +107,7 @@ impl TryFrom<FrameData> for AddressedSystemState {
             let high = *data.0.get(3).ok_or(Error::Unknown)?;
             let low = *data.0.get(4).ok_or(Error::Unknown)?;
             let time_ms = (high as u16) << 8 | (low as u16);
-            RaceInstant::from_millis(time_ms)
+            Instant::from_millis(time_ms)
         };
 
         let state = SystemState { gate_state, time };
@@ -155,7 +155,7 @@ mod tests {
             addr: NodeAddress::start(),
             state: SystemState {
                 gate_state: GateState::Active,
-                time: RaceInstant::from_millis(12345),
+                time: Instant::from_millis(12345),
             },
         };
 

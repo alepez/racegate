@@ -3,12 +3,12 @@ use crate::hal::gate::GateState;
 use crate::hal::rgb_led::RgbLed;
 use crate::hal::rgb_led::RgbLedColor;
 use crate::hal::Platform;
-use crate::svc::{RaceClock, RaceInstant};
+use crate::svc::{Clock, Instant};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct SystemState {
     pub gate_state: GateState,
-    pub time: RaceInstant,
+    pub time: Instant,
 }
 
 impl From<&AppState> for SystemState {
@@ -29,7 +29,7 @@ impl From<&AppState> for SystemState {
 struct Services<'a> {
     led_controller: LedController<'a>,
     platform: &'a dyn Platform,
-    race_clock: RaceClock,
+    race_clock: Clock,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
@@ -55,7 +55,7 @@ impl<'a> App<'a> {
             led: platform.rgb_led(),
         };
 
-        let race_clock = RaceClock::new();
+        let race_clock = Clock::default();
 
         let services = Services {
             led_controller,
@@ -123,7 +123,7 @@ struct InitAppState {
     is_wifi_connected: bool,
     gate_state: GateState,
     button_state: ButtonState,
-    time: RaceInstant,
+    time: Instant,
 }
 
 impl InitAppState {
@@ -154,7 +154,7 @@ struct ReadyAppState {
     is_wifi_connected: bool,
     gate_state: GateState,
     button_state: ButtonState,
-    time: RaceInstant,
+    time: Instant,
 }
 
 impl ReadyAppState {
