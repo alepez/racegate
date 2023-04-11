@@ -26,7 +26,7 @@ impl From<&AppState> for SystemState {
                 gate_state: GateState::Inactive,
                 time: x.time,
             },
-            AppState::Ready(x) => SystemState {
+            AppState::GateReady(x) => SystemState {
                 gate_state: x.gate_state,
                 time: x.time,
             },
@@ -42,15 +42,15 @@ struct Services<'a> {
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 enum AppState {
-    Init(InitAppState),
+    Init(InitState),
     CoordinatorReady(CoordinatorReadyState),
     GateStartup(GateStartupState),
-    Ready(ReadyAppState),
+    GateReady(GateReadyState),
 }
 
 impl Default for AppState {
     fn default() -> Self {
-        AppState::Init(InitAppState::default())
+        AppState::Init(InitState::default())
     }
 }
 
@@ -83,7 +83,7 @@ impl<'a> App<'a> {
             AppState::Init(mut state) => state.update(&self.services),
             AppState::CoordinatorReady(mut state) => state.update(&self.services),
             AppState::GateStartup(mut state) => state.update(&self.services),
-            AppState::Ready(mut state) => state.update(&self.services),
+            AppState::GateReady(mut state) => state.update(&self.services),
         };
 
         if new_state != self.state {
@@ -117,7 +117,7 @@ impl<'a> LedController<'a> {
             AppState::Init(_) => 0xFF0000,
             AppState::CoordinatorReady(_) => 0xFFFFFF,
             AppState::GateStartup(_) => 0xFFFF00,
-            AppState::Ready(state) => {
+            AppState::GateReady(state) => {
                 if state.gate_state == GateState::Active {
                     0x008080
                 } else if state.is_wifi_connected {
@@ -133,14 +133,14 @@ impl<'a> LedController<'a> {
 }
 
 #[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
-struct InitAppState {
+struct InitState {
     is_wifi_connected: bool,
     gate_state: GateState,
     button_state: ButtonState,
     time: Instant,
 }
 
-impl InitAppState {
+impl InitState {
     pub fn update(&mut self, services: &Services) -> AppState {
         let is_wifi_connected = services.platform.wifi().is_connected();
         let gate_state = services.platform.gate().state();
@@ -221,19 +221,19 @@ impl GateStartupState {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-struct ReadyAppState {
+struct GateReadyState {
     is_wifi_connected: bool,
     gate_state: GateState,
     time: Instant,
 }
 
-impl ReadyAppState {
+impl GateReadyState {
     pub fn update(&mut self, services: &Services) -> AppState {
         let is_wifi_connected = services.platform.wifi().is_connected();
         let gate_state = services.platform.gate().state();
         let time = services.race_clock.now().expect("Cannot get time");
 
-        AppState::Ready(ReadyAppState {
+        AppState::GateReady(GateReadyState {
             is_wifi_connected,
             gate_state,
             time,
