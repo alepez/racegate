@@ -30,6 +30,10 @@ impl From<&AppState> for SystemState {
                 gate_state: x.gate_state,
                 time: x.time,
             },
+            AppState::GateDisconnected(x) => SystemState {
+                gate_state: GateState::Inactive,
+                time: x.time,
+            },
         }
     }
 }
@@ -46,6 +50,7 @@ enum AppState {
     CoordinatorReady(CoordinatorReadyState),
     GateStartup(GateStartupState),
     GateReady(GateReadyState),
+    GateDisconnected(GateDisconnectedState),
 }
 
 impl Default for AppState {
@@ -84,6 +89,7 @@ impl<'a> App<'a> {
             AppState::CoordinatorReady(mut state) => state.update(&self.services),
             AppState::GateStartup(mut state) => state.update(&self.services),
             AppState::GateReady(mut state) => state.update(&self.services),
+            AppState::GateDisconnected(mut state) => state.update(&self.services),
         };
 
         if new_state != self.state {
@@ -126,6 +132,7 @@ impl<'a> LedController<'a> {
                     0x800000
                 }
             }
+            AppState::GateDisconnected(_) => 0xFF00FF,
         };
 
         self.led.set_color(RgbLedColor::from(color));
@@ -160,14 +167,12 @@ impl InitState {
             log::info!("This is a gate");
             AppState::GateStartup(GateStartupState {
                 is_wifi_connected,
-                gate_state,
                 time,
             })
         } else if startup_as_coordinator {
             log::info!("This is a coordinator");
             AppState::CoordinatorReady(CoordinatorReadyState {
                 is_wifi_connected,
-                gate_state,
                 time,
             })
         } else {
@@ -179,19 +184,16 @@ impl InitState {
 #[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
 struct CoordinatorReadyState {
     is_wifi_connected: bool,
-    gate_state: GateState,
     time: Instant,
 }
 
 impl CoordinatorReadyState {
     pub fn update(&mut self, services: &Services) -> AppState {
         let is_wifi_connected = services.platform.wifi().is_connected();
-        let gate_state = services.platform.gate().state();
         let time = services.race_clock.now().expect("Cannot get time");
 
         AppState::CoordinatorReady(CoordinatorReadyState {
             is_wifi_connected,
-            gate_state,
             time,
         })
     }
@@ -200,23 +202,27 @@ impl CoordinatorReadyState {
 #[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
 struct GateStartupState {
     is_wifi_connected: bool,
-    gate_state: GateState,
     time: Instant,
 }
 
 impl GateStartupState {
     pub fn update(&mut self, services: &Services) -> AppState {
         let is_wifi_connected = services.platform.wifi().is_connected();
-        let gate_state = services.platform.gate().state();
         let time = services.race_clock.now().expect("Cannot get time");
 
         // TODO switch to Ready when time is synchronized with coordinator
 
-        AppState::GateStartup(GateStartupState {
-            is_wifi_connected,
-            gate_state,
-            time,
-        })
+        if is_wifi_connected {
+            AppState::GateDisconnected(GateDisconnectedState {
+                is_wifi_connected,
+                time,
+            })
+        } else {
+            AppState::GateStartup(GateStartupState {
+                is_wifi_connected,
+                time,
+            })
+        }
     }
 }
 
@@ -238,6 +244,32 @@ impl GateReadyState {
             gate_state,
             time,
         })
+    }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+struct GateDisconnectedState {
+    is_wifi_connected: bool,
+    time: Instant,
+}
+
+impl GateDisconnectedState {
+    pub fn update(&mut self, services: &Services) -> AppState {
+        let is_wifi_connected = services.platform.wifi().is_connected();
+        let time = services.race_clock.now().expect("Cannot get time");
+
+        if is_wifi_connected {
+            AppState::GateReady(GateReadyState {
+                is_wifi_connected,
+                gate_state: Default::default(), // TODO
+                time,
+            })
+        } else {
+            AppState::GateDisconnected(GateDisconnectedState {
+                is_wifi_connected,
+                time,
+            })
+        }
     }
 }
 
