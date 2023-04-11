@@ -80,7 +80,7 @@ impl LocalOffset {
 }
 
 pub fn calculate_clock_offset(
-    coordinator_time: LocalInstant,
+    coordinator_time: CoordinatedInstant,
     local_time: LocalInstant,
 ) -> LocalOffset {
     let c = coordinator_time.as_millis();

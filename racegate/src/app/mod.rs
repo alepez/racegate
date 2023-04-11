@@ -113,7 +113,7 @@ impl InitState {
         let is_wifi_connected = services.platform.wifi().is_connected();
         let gate_state = services.platform.gate().state();
         let button_state = services.platform.button().state();
-        let time = services.local_clock.now().expect("Cannot get time");
+        let local_time = services.local_clock.now().expect("Cannot get time");
 
         let startup_as_gate = is_wifi_connected
             && (button_state != ButtonState::Pressed)
@@ -128,13 +128,14 @@ impl InitState {
             log::info!("This is a gate");
             AppState::GateStartup(GateStartupState {
                 is_wifi_connected,
-                time,
+                time: local_time,
             })
         } else if startup_as_coordinator {
             log::info!("This is a coordinator");
+            // On coordinator, local time is the coordinated time, without any offset
             AppState::CoordinatorReady(CoordinatorReadyState {
                 is_wifi_connected,
-                time,
+                time: CoordinatedInstant::from_millis(local_time.as_millis()),
             })
         } else {
             AppState::Init(*self)
@@ -145,13 +146,16 @@ impl InitState {
 #[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
 struct CoordinatorReadyState {
     is_wifi_connected: bool,
-    time: LocalInstant,
+    time: CoordinatedInstant,
 }
 
 impl CoordinatorReadyState {
     pub fn update(&mut self, services: &Services) -> AppState {
         let is_wifi_connected = services.platform.wifi().is_connected();
-        let time = services.local_clock.now().expect("Cannot get time");
+        let local_time = services.local_clock.now().expect("Cannot get time");
+
+        // On coordinator, local time is the coordinated time, without any offset
+        let time = CoordinatedInstant::from_millis(local_time.as_millis());
 
         let beacon = CoordinatorBeacon { time };
 
@@ -159,9 +163,7 @@ impl CoordinatorReadyState {
             log::error!("{e}");
         }
 
-        let system_state = SystemState {
-            time: CoordinatedInstant::from_millis(time.as_millis()),
-        };
+        let system_state = SystemState { time };
 
         services
             .platform

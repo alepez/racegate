@@ -1,5 +1,6 @@
 use crate::hal::gate::GateState;
 use crate::svc::clock::LocalInstant;
+use crate::svc::CoordinatedInstant;
 
 #[derive(Debug)]
 pub enum Error {
@@ -7,7 +8,7 @@ pub enum Error {
 }
 
 pub trait RaceNode {
-    fn coordinator_time(&self) -> Option<LocalInstant>;
+    fn coordinator_time(&self) -> Option<CoordinatedInstant>;
 
     fn publish(&self, msg: RaceNodeMessage) -> anyhow::Result<()>;
 }
@@ -64,7 +65,7 @@ pub struct GateBeacon {
 
 #[derive(Debug, Copy, Clone)]
 pub struct CoordinatorBeacon {
-    pub time: LocalInstant,
+    pub time: CoordinatedInstant,
 }
 
 #[derive(Debug)]
@@ -122,8 +123,9 @@ impl TryFrom<FrameData> for CoordinatorBeacon {
     type Error = Error;
 
     fn try_from(data: FrameData) -> Result<CoordinatorBeacon, Error> {
-        let time =
-            LocalInstant::from_millis(deserialize_u32(&data, 1).ok_or(Error::Unknown)? as i32);
+        let time = CoordinatedInstant::from_millis(
+            deserialize_u32(&data, 1).ok_or(Error::Unknown)? as i32,
+        );
 
         Ok(CoordinatorBeacon { time })
     }

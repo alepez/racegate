@@ -9,7 +9,7 @@ use std::time::Duration;
 use anyhow::anyhow;
 
 use crate::svc::race_node::{FrameData, RaceNode, RaceNodeMessage};
-use crate::svc::LocalInstant;
+use crate::svc::CoordinatedInstant;
 
 #[derive(Default, Debug)]
 struct Stats {
@@ -175,7 +175,7 @@ fn receive_message(receiver: &mut UdpSocket) -> anyhow::Result<RaceNodeMessage> 
 }
 
 impl RaceNode for StdRaceNode {
-    fn coordinator_time(&self) -> Option<LocalInstant> {
+    fn coordinator_time(&self) -> Option<CoordinatedInstant> {
         let nodes = self.state.0.lock().ok()?;
         nodes.coordinator_time
     }
@@ -187,7 +187,7 @@ impl RaceNode for StdRaceNode {
 
 #[derive(Default)]
 struct NodesState {
-    coordinator_time: Option<LocalInstant>,
+    coordinator_time: Option<CoordinatedInstant>,
 }
 
 #[derive(Clone)]
