@@ -8,9 +8,12 @@
 <body>
 <ul>
     <li>Time: <span id="state-time"></span></li>
+    <li>Gate 1: <span id="state-gate-start-active"></span></li>
+    <li>Gate 15: <span id="state-gate-finish-active"></span></li>
 </ul>
 <script>
-    var gateway = `ws://${window.location.hostname}/state`;
+    // var gateway = `ws://${window.location.hostname}/state`;
+    var gateway = `ws://192.168.1.204/state`;
     var websocket = null;
 
     function initWebSocket() {
@@ -35,6 +38,8 @@
     function onMessageData(data) {
         var obj = JSON.parse(data);
         document.getElementById('state-time').innerHTML = obj.time;
+        document.getElementById('state-gate-start-active').innerHTML = obj.gates.items[0].active;
+        document.getElementById('state-gate-finish-active').innerHTML = obj.gates.items[15].active;
     }
 
     function onLoad(event) {

@@ -4,7 +4,7 @@ expression: "RaceNodeMessage::try_from(data).unwrap()"
 ---
 CoordinatorBeacon(
     CoordinatorBeacon {
-        time: LocalInstant(
+        time: CoordinatedInstant(
             2123456789,
         ),
     },

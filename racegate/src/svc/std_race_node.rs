@@ -9,7 +9,8 @@ use std::time::Duration;
 use anyhow::anyhow;
 
 use crate::app::gates::Gates;
-use crate::svc::race_node::{FrameData, RaceNode, RaceNodeMessage};
+use crate::hal::gate::GateState;
+use crate::svc::race_node::{FrameData, GateBeacon, RaceNode, RaceNodeMessage};
 use crate::svc::CoordinatedInstant;
 
 #[derive(Default, Debug)]
@@ -127,7 +128,9 @@ fn spawn_thread(
                     stats.rx_count += 1;
 
                     match rx_msg {
-                        RaceNodeMessage::GateBeacon(_) => { /* Ignore */ }
+                        RaceNodeMessage::GateBeacon(beacon) => {
+                            state.try_modify(|x| update_gate(&mut x.gates, &beacon))
+                        }
                         RaceNodeMessage::CoordinatorBeacon(beacon) => {
                             state.try_modify(|x| x.coordinator_time = Some(beacon.time))
                         }
@@ -177,8 +180,7 @@ fn receive_message(receiver: &mut UdpSocket) -> anyhow::Result<RaceNodeMessage> 
 
 impl RaceNode for StdRaceNode {
     fn coordinator_time(&self) -> Option<CoordinatedInstant> {
-        let nodes = self.state.0.lock().ok()?;
-        nodes.coordinator_time
+        self.state.0.lock().ok()?.coordinator_time
     }
 
     fn publish(&self, msg: RaceNodeMessage) -> anyhow::Result<()> {
@@ -186,13 +188,14 @@ impl RaceNode for StdRaceNode {
     }
 
     fn gates(&self) -> Gates {
-        Gates::default() // TODO
+        self.state.0.lock().ok().unwrap().gates.to_owned()
     }
 }
 
 #[derive(Default)]
 struct NodesState {
     coordinator_time: Option<CoordinatedInstant>,
+    gates: Gates,
 }
 
 #[derive(Clone)]
@@ -211,6 +214,13 @@ impl SharedNodeState {
     {
         // Ignore errors
         self.0.try_lock().map(|mut x| f(x.deref_mut())).ok();
+    }
+}
+
+fn update_gate(gates: &mut Gates, gate: &GateBeacon) {
+    let &GateBeacon { addr, state, .. } = gate;
+    if let Some(gate) = gates.get_mut_from_addr(addr) {
+        gate.active = state == GateState::Active;
     }
 }
 

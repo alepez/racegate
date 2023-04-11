@@ -47,6 +47,14 @@ impl NodeAddress {
     pub fn is_finish(&self) -> bool {
         *self == FINISH_ADDRESS
     }
+
+    pub fn as_gate_index(&self) -> Option<usize> {
+        if self.0 < 1 {
+            None
+        } else {
+            Some((self.0 as usize) - 1)
+        }
+    }
 }
 
 pub struct FrameData([u8; RaceNodeMessage::FRAME_SIZE]);

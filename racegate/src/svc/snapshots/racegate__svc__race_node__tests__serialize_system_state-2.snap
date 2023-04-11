@@ -7,11 +7,9 @@ GateBeacon(
         addr: NodeAddress(
             1,
         ),
-        state: SystemState {
-            gate_state: Active,
-            time: LocalInstant(
-                12345,
-            ),
-        },
+        state: Active,
+        local_time: LocalInstant(
+            12345,
+        ),
     },
 )
