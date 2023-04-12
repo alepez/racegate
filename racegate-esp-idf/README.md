@@ -43,7 +43,7 @@ cargo espflash --speed 1500000 --release --monitor /dev/ttyACM0
 
 #### Built in JTAG interface
 
-Not all ESP32-C3 have JTAG interface. Example:
+Not all ESP32-C3 have a built-in JTAG interface. Example:
 
 | Model                                                     | JTAG |
 |-----------------------------------------------------------|------|
