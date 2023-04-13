@@ -128,9 +128,8 @@ fn spawn_thread(
                     stats.rx_count += 1;
 
                     match rx_msg {
-                        RaceNodeMessage::GateBeacon(beacon) => {
-                            state.try_modify(|x| update_gate(&mut x.gates, &beacon, x.coordinator_time))
-                        }
+                        RaceNodeMessage::GateBeacon(beacon) => state
+                            .try_modify(|x| update_gate(&mut x.gates, &beacon, x.coordinator_time)),
                         RaceNodeMessage::CoordinatorBeacon(beacon) => {
                             state.try_modify(|x| x.coordinator_time = Some(beacon.time))
                         }
@@ -179,6 +178,10 @@ fn receive_message(receiver: &mut UdpSocket) -> anyhow::Result<RaceNodeMessage> 
 }
 
 impl RaceNode for StdRaceNode {
+    fn set_coordinator_time(&self, t: CoordinatedInstant) {
+        self.state.try_modify(|x| x.coordinator_time = Some(t))
+    }
+
     fn coordinator_time(&self) -> Option<CoordinatedInstant> {
         self.state.0.lock().ok()?.coordinator_time
     }

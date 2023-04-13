@@ -177,6 +177,8 @@ impl CoordinatorReadyState {
             log::error!("{e}");
         }
 
+        services.platform.race_node().set_coordinator_time(time);
+
         let gates = services.platform.race_node().gates();
 
         let mut race = self.system_state.race.clone();

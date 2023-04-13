@@ -47,12 +47,23 @@
         gatesIndexes.forEach((index) => {
           var id = `state-gate-${index}`;
           var active = obj.gates.items[index].active;
-          var time = obj.gates.items[index].last_activation_time;
-          if (time) {
-            var timeDiff = (time - coordinatorTime) / 1000;
-            var text = `${active} ${timeDiff}`;
-            document.getElementById(id).innerHTML = text;
+          var lastActivationTime = obj.gates.items[index].last_activation_time;
+          var lastBeaconTime = obj.gates.items[index].last_beacon_time;
+
+          var timeDiff = "";
+          if (lastActivationTime) {
+            timeDiff = ((lastActivationTime - coordinatorTime) / 1000).toFixed(2);
           }
+
+          var connection = "connection lost"
+          if (lastBeaconTime) {
+            if ((coordinatorTime - lastBeaconTime) < 1000) {
+              connection = "connected"
+            }
+          }
+
+          var text = `${active} ${timeDiff} ${connection}`
+          document.getElementById(id).innerHTML = text;
         });
 
         var duration = obj.race.duration;

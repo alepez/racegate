@@ -8,6 +8,8 @@ pub enum Error {
 }
 
 pub trait RaceNode {
+    fn set_coordinator_time(&self, t: CoordinatedInstant);
+
     fn coordinator_time(&self) -> Option<CoordinatedInstant>;
 
     fn publish(&self, msg: RaceNodeMessage) -> anyhow::Result<()>;
