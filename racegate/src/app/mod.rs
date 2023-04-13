@@ -121,7 +121,7 @@ impl InitState {
         let gate_state = services.platform.gate().state();
         let button_state = services.platform.button().state();
         let local_time = services.local_clock.now().expect("Cannot get time");
-        let address = services.platform.dip_switch().address();
+        let address = address(services);
 
         log::info!("address: {:?}", address);
 
@@ -252,7 +252,7 @@ impl GateReadyState {
         let clock_offset = self.clock_offset;
         let clock = CoordinatedClock::new(&services.local_clock, clock_offset);
         let coordinated_time = clock.now();
-        let addr = services.platform.dip_switch().address();
+        let addr = address(services);
 
         let last_activation_time = if gate_state == GateState::Active {
             Some(coordinated_time)
@@ -278,4 +278,8 @@ impl GateReadyState {
             last_activation_time,
         })
     }
+}
+
+fn address(services: &Services) -> NodeAddress {
+    services.platform.dip_switch().address()
 }
