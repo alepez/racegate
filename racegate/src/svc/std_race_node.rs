@@ -129,7 +129,7 @@ fn spawn_thread(
 
                     match rx_msg {
                         RaceNodeMessage::GateBeacon(beacon) => {
-                            state.try_modify(|x| update_gate(&mut x.gates, &beacon))
+                            state.try_modify(|x| update_gate(&mut x.gates, &beacon, x.coordinator_time))
                         }
                         RaceNodeMessage::CoordinatorBeacon(beacon) => {
                             state.try_modify(|x| x.coordinator_time = Some(beacon.time))
@@ -217,7 +217,7 @@ impl SharedNodeState {
     }
 }
 
-fn update_gate(gates: &mut Gates, gate: &GateBeacon) {
+fn update_gate(gates: &mut Gates, gate: &GateBeacon, coordinated_time: Option<CoordinatedInstant>) {
     let &GateBeacon {
         addr,
         state,
@@ -226,6 +226,7 @@ fn update_gate(gates: &mut Gates, gate: &GateBeacon) {
     if let Some(gate) = gates.get_mut_from_addr(addr) {
         gate.active = state == GateState::Active;
         gate.last_activation_time = last_activation_time;
+        gate.last_beacon_time = coordinated_time;
     }
 }
 

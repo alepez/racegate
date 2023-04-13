@@ -5,6 +5,7 @@ use crate::svc::CoordinatedInstant;
 pub struct Gate {
     pub active: bool,
     pub last_activation_time: Option<CoordinatedInstant>,
+    pub last_beacon_time: Option<CoordinatedInstant>,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Default, Clone, Eq, PartialEq)]
