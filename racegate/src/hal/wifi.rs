@@ -1,7 +1,7 @@
 pub trait Wifi {
     fn setup(&self, config: &WifiConfig) -> anyhow::Result<()>;
 
-    fn is_connected(&self) -> bool;
+    fn is_up(&self) -> bool;
 }
 
 #[derive(Eq, PartialEq)]

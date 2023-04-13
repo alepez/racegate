@@ -89,12 +89,9 @@ impl Wifi for EspWifi {
         Ok(())
     }
 
-    fn is_connected(&self) -> bool {
+    fn is_up(&self) -> bool {
         if let Ok(esp_wifi) = self.esp_wifi.try_borrow() {
-            let connected = esp_wifi.driver().is_connected().unwrap_or(false);
-            let ap_is_up = esp_wifi.ap_netif().is_up().unwrap_or(false);
-            let sta_is_up = esp_wifi.sta_netif().is_up().unwrap_or(false);
-            connected && (ap_is_up || sta_is_up)
+            esp_wifi.is_up().unwrap_or(false)
         } else {
             false
         }

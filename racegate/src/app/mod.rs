@@ -117,7 +117,7 @@ struct InitState {
 
 impl InitState {
     pub fn update(&mut self, services: &Services) -> AppState {
-        let is_wifi_connected = services.platform.wifi().is_connected();
+        let is_wifi_connected = services.platform.wifi().is_up();
         let gate_state = services.platform.gate().state();
         let button_state = services.platform.button().state();
         let local_time = services.local_clock.now().expect("Cannot get time");
@@ -165,7 +165,7 @@ struct CoordinatorReadyState {
 
 impl CoordinatorReadyState {
     pub fn update(&self, services: &Services) -> AppState {
-        let is_wifi_connected = services.platform.wifi().is_connected();
+        let is_wifi_connected = services.platform.wifi().is_up();
         let local_time = services.local_clock.now().expect("Cannot get time");
 
         // On coordinator, local time is the coordinated time, without any offset
@@ -206,7 +206,7 @@ struct GateStartupState {
 
 impl GateStartupState {
     pub fn update(&mut self, services: &Services) -> AppState {
-        let is_wifi_connected = services.platform.wifi().is_connected();
+        let is_wifi_connected = services.platform.wifi().is_up();
         let time = services.local_clock.now().expect("Cannot get time");
         let gate_state = services.platform.gate().state();
 
@@ -247,7 +247,7 @@ struct GateReadyState {
 
 impl GateReadyState {
     pub fn update(&mut self, services: &Services) -> AppState {
-        let is_wifi_connected = services.platform.wifi().is_connected();
+        let is_wifi_connected = services.platform.wifi().is_up();
         let gate_state = services.platform.gate().state();
         let clock_offset = self.clock_offset;
         let clock = CoordinatedClock::new(&services.local_clock, clock_offset);
