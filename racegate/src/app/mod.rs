@@ -281,5 +281,12 @@ impl GateReadyState {
 }
 
 fn address(services: &Services) -> NodeAddress {
-    services.platform.dip_switch().address()
+    address_from_env_var().unwrap_or_else(|| services.platform.dip_switch().address())
+}
+
+fn address_from_env_var() -> Option<NodeAddress> {
+    option_env!("RACEGATE_NODE_ADDRESS")?
+        .parse::<u8>()
+        .ok()
+        .map(NodeAddress::from)
 }
