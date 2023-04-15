@@ -90,7 +90,13 @@ impl<'a> LedController<'a> {
     pub fn update(&mut self, app_state: &AppState) {
         let color = match app_state {
             AppState::Init(_) => 0xFF0000,
-            AppState::CoordinatorReady(_) => 0xFFFFFF,
+            AppState::CoordinatorReady(state) => {
+                if state.any_gate_active {
+                    0x00FFFF
+                } else {
+                    0xFFFFFF
+                }
+            }
             AppState::GateStartup(_) => 0xFFFF00,
             AppState::GateReady(state) => {
                 if state.gate_state == GateState::Active {
@@ -149,6 +155,7 @@ impl InitState {
                 is_wifi_connected,
                 time: CoordinatedInstant::from_millis(local_time.as_millis()),
                 system_state: SystemState::default(),
+                any_gate_active: false,
             })
         } else {
             AppState::Init(*self)
@@ -161,6 +168,7 @@ struct CoordinatorReadyState {
     is_wifi_connected: bool,
     time: CoordinatedInstant,
     system_state: SystemState,
+    any_gate_active: bool,
 }
 
 impl CoordinatorReadyState {
@@ -185,6 +193,8 @@ impl CoordinatorReadyState {
 
         race.set_gates(&gates);
 
+        let any_gate_active = gates.start_gate().active || gates.finish_gate().active;
+
         let system_state = SystemState { time, gates, race };
 
         services
@@ -196,6 +206,7 @@ impl CoordinatorReadyState {
             is_wifi_connected,
             time,
             system_state,
+            any_gate_active,
         })
     }
 }
