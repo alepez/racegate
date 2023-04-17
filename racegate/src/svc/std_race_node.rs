@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use anyhow::anyhow;
 
@@ -189,6 +189,14 @@ impl RaceNode for StdRaceNode {
             // This timeout must be very strict, because set_coordinator_time is
             // called when the node is a coordinator.
             const TIMEOUT: Duration = Duration::from_millis(100);
+
+            if let Some(expiration) = x.coordinator_time.expiration {
+                let now = Instant::now();
+                if now > expiration {
+                    log::warn!("set_coordinator_time called too late");
+                }
+            }
+
             x.coordinator_time = ExpOpt::<CoordinatedInstant>::new_with_duration(t, TIMEOUT)
         })
     }
