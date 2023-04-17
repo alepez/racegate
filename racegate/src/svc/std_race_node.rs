@@ -13,6 +13,8 @@ use crate::hal::gate::GateState;
 use crate::svc::race_node::{FrameData, GateBeacon, RaceNode, RaceNodeMessage};
 use crate::svc::CoordinatedInstant;
 
+const COORDINATOR_BEACON_TIMEOUT: Duration = Duration::from_secs(10);
+
 #[derive(Default, Debug)]
 struct Stats {
     tx_count: usize,
@@ -134,7 +136,7 @@ fn spawn_thread(
                         RaceNodeMessage::CoordinatorBeacon(beacon) => state.try_modify(|x| {
                             x.coordinator_time = ExpOpt::<CoordinatedInstant>::new_with_duration(
                                 beacon.time,
-                                Duration::from_millis(250),
+                                COORDINATOR_BEACON_TIMEOUT,
                             )
                         }),
                     }
@@ -184,8 +186,10 @@ fn receive_message(receiver: &mut UdpSocket) -> anyhow::Result<RaceNodeMessage> 
 impl RaceNode for StdRaceNode {
     fn set_coordinator_time(&self, t: CoordinatedInstant) {
         self.state.try_modify(|x| {
-            x.coordinator_time =
-                ExpOpt::<CoordinatedInstant>::new_with_duration(t, Duration::from_millis(250))
+            // This timeout must be very strict, because set_coordinator_time is
+            // called when the node is a coordinator.
+            const TIMEOUT: Duration = Duration::from_millis(100);
+            x.coordinator_time = ExpOpt::<CoordinatedInstant>::new_with_duration(t, TIMEOUT)
         })
     }
 
@@ -267,6 +271,10 @@ impl<T> ExpOpt<T> {
         };
 
         if expired {
+            log::info!(
+                "Expired {}ms ago",
+                now.duration_since(self.expiration.unwrap()).as_millis()
+            );
             None
         } else {
             self.value

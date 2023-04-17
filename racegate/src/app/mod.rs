@@ -247,6 +247,7 @@ impl GateReadyState {
         let gate_state = services.platform.gate().state();
 
         let Some(coordinated_clock) = make_coordinated_clock(services) else {
+            log::warn!("Unreliable coordinated clock");
             return AppState::GateStartup(GateStartupState);
         };
 
