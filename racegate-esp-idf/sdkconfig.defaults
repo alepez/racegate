@@ -1,6 +1,8 @@
 # Rust often needs a bit of an extra main task stack size compared to C (the default is 3K)
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=16000
 
+CONFIG_FREERTOS_HZ=200
+
 # Workaround for https://github.com/espressif/esp-idf/issues/7631
 CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=n
 CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=n
