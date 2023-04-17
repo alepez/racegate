@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
+use std::thread::JoinHandle;
 use std::{thread::sleep, time::Duration};
 
 use embedded_svc::http::Method;
@@ -62,7 +63,8 @@ pub struct HttpServer {
     #[allow(dead_code)]
     esp_http_server: EspHttpServer,
     app_state: Arc<Mutex<SystemState>>,
-    state_senders: StateSenders,
+    #[allow(dead_code)]
+    send_task: JoinHandle<()>,
 }
 
 fn add_handlers(server: &mut EspHttpServer) -> anyhow::Result<StateSenders> {
@@ -100,16 +102,33 @@ fn add_handlers(server: &mut EspHttpServer) -> anyhow::Result<StateSenders> {
     Ok(state_senders)
 }
 
+fn spawn_send_task(state_senders: StateSenders, state: Arc<Mutex<SystemState>>) -> JoinHandle<()> {
+    std::thread::Builder::new()
+        .stack_size(64 * 1024)
+        .spawn(move || loop {
+            sleep(Duration::from_millis(40));
+            // Instead of keeping the mutex locked until the state is sent, we get
+            // a copy of the state and send it asynchronously.
+            if let Ok(state) = state.try_lock().map(|x| x.clone()) {
+                state_senders.send(&state);
+            }
+        })
+        .unwrap()
+}
+
 impl HttpServer {
     pub fn new() -> anyhow::Result<Self> {
         let conf = Configuration::default();
         let mut esp_http_server = EspHttpServer::new(&conf)?;
         let app_state = Arc::new(Mutex::new(Default::default()));
         let state_senders = add_handlers(&mut esp_http_server)?;
+
+        let send_task = spawn_send_task(state_senders.clone(), app_state.clone());
+
         Ok(HttpServer {
             esp_http_server,
             app_state,
-            state_senders,
+            send_task,
         })
     }
 }
@@ -122,11 +141,6 @@ impl racegate::svc::HttpServer for HttpServer {
             .try_lock()
             .as_mut()
             .map(|x| {
-                if x.ne(state) {
-                    // TODO This may block the caller until messages are sent
-                    self.state_senders.send(state);
-                }
-
                 **x = state.clone();
             })
             .ok();
