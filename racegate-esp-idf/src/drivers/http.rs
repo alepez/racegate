@@ -116,11 +116,14 @@ impl HttpServer {
 
 impl racegate::svc::HttpServer for HttpServer {
     fn set_system_state(&self, state: &SystemState) {
+        // try_lock is used because we want to avoid waiting for the lock to be
+        // acquired and we accept to miss some update.
         self.app_state
             .try_lock()
             .as_mut()
             .map(|x| {
                 if x.ne(state) {
+                    // TODO This may block the caller until messages are sent
                     self.state_senders.send(state);
                 }
 
