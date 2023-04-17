@@ -128,8 +128,6 @@ impl InitState {
         let local_time = services.local_clock.now().expect("Cannot get time");
         let address = address(services);
 
-        log::info!("address: {:?}", address);
-
         let startup_as_gate = address.is_gate()
             && is_wifi_connected
             && (button_state != ButtonState::Pressed)
