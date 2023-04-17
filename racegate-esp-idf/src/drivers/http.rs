@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
+use std::time::Instant;
 use std::{thread::sleep, time::Duration};
 
 use embedded_svc::http::Method;
@@ -57,6 +58,17 @@ impl StateSenders {
             }
         }
     }
+
+    fn cleanup_closed(&self) {
+        if let Ok(mut senders) = self.0.try_lock() {
+            let pre_count = senders.len();
+            senders.retain(|x| !x.ws.is_closed());
+            let removed_count = pre_count - senders.len();
+            if removed_count > 0 {
+                log::info!("removed {}", removed_count);
+            }
+        }
+    }
 }
 
 pub struct HttpServer {
@@ -103,14 +115,26 @@ fn add_handlers(server: &mut EspHttpServer) -> anyhow::Result<StateSenders> {
 }
 
 fn spawn_send_task(state_senders: StateSenders, state: Arc<Mutex<SystemState>>) -> JoinHandle<()> {
+    const TASK_WAKEUP_PERIOD: Duration = Duration::from_millis(250);
+
     std::thread::Builder::new()
         .stack_size(64 * 1024)
         .spawn(move || loop {
-            sleep(Duration::from_millis(40));
+            let next_wakeup = Instant::now() + TASK_WAKEUP_PERIOD;
+
+            state_senders.cleanup_closed();
+
             // Instead of keeping the mutex locked until the state is sent, we get
             // a copy of the state and send it asynchronously.
             if let Ok(state) = state.try_lock().map(|x| x.clone()) {
                 state_senders.send(&state);
+            }
+
+            // Ensure this task is not spinning
+            if let Some(delay) = next_wakeup.checked_duration_since(Instant::now()) {
+                sleep(delay);
+            } else {
+                log::error!("no delay");
             }
         })
         .unwrap()
