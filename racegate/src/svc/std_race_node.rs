@@ -128,11 +128,15 @@ fn spawn_thread(
                     stats.rx_count += 1;
 
                     match rx_msg {
-                        RaceNodeMessage::GateBeacon(beacon) => state
-                            .try_modify(|x| update_gate(&mut x.gates, &beacon, x.coordinator_time)),
-                        RaceNodeMessage::CoordinatorBeacon(beacon) => {
-                            state.try_modify(|x| x.coordinator_time = Some(beacon.time))
-                        }
+                        RaceNodeMessage::GateBeacon(beacon) => state.try_modify(|x| {
+                            update_gate(&mut x.gates, &beacon, x.coordinator_time.into_option())
+                        }),
+                        RaceNodeMessage::CoordinatorBeacon(beacon) => state.try_modify(|x| {
+                            x.coordinator_time = ExpOpt::<CoordinatedInstant>::new_with_duration(
+                                beacon.time,
+                                Duration::from_millis(250),
+                            )
+                        }),
                     }
                 }
 
@@ -179,11 +183,14 @@ fn receive_message(receiver: &mut UdpSocket) -> anyhow::Result<RaceNodeMessage> 
 
 impl RaceNode for StdRaceNode {
     fn set_coordinator_time(&self, t: CoordinatedInstant) {
-        self.state.try_modify(|x| x.coordinator_time = Some(t))
+        self.state.try_modify(|x| {
+            x.coordinator_time =
+                ExpOpt::<CoordinatedInstant>::new_with_duration(t, Duration::from_millis(250))
+        })
     }
 
     fn coordinator_time(&self) -> Option<CoordinatedInstant> {
-        self.state.0.lock().ok()?.coordinator_time
+        self.state.0.lock().ok()?.coordinator_time.into_option()
     }
 
     fn publish(&self, msg: RaceNodeMessage) -> anyhow::Result<()> {
@@ -197,7 +204,7 @@ impl RaceNode for StdRaceNode {
 
 #[derive(Default)]
 struct NodesState {
-    coordinator_time: Option<CoordinatedInstant>,
+    coordinator_time: ExpOpt<CoordinatedInstant>,
     gates: Gates,
 }
 
@@ -230,6 +237,40 @@ fn update_gate(gates: &mut Gates, gate: &GateBeacon, coordinated_time: Option<Co
         gate.active = state == GateState::Active;
         gate.last_activation_time = last_activation_time;
         gate.last_beacon_time = coordinated_time;
+    }
+}
+
+#[derive(Default, Copy, Clone)]
+struct ExpOpt<T> {
+    value: Option<T>,
+    expiration: Option<std::time::Instant>,
+}
+
+impl<T> ExpOpt<T> {
+    fn new_with_expiration(value: T, expiration: std::time::Instant) -> Self {
+        Self {
+            value: Some(value),
+            expiration: Some(expiration),
+        }
+    }
+    fn new_with_duration(value: T, duration: std::time::Duration) -> Self {
+        Self::new_with_expiration(value, std::time::Instant::now() + duration)
+    }
+
+    fn into_option(self) -> Option<T> {
+        let now = std::time::Instant::now();
+
+        let expired = if let Some(expiration) = self.expiration {
+            expiration < now
+        } else {
+            false
+        };
+
+        if expired {
+            None
+        } else {
+            self.value
+        }
     }
 }
 

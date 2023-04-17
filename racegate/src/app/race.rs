@@ -58,18 +58,22 @@ mod tests {
             Gate {
                 active: true,
                 last_activation_time: Some(CoordinatedInstant::from_millis(10_000)),
+                last_beacon_time: Some(CoordinatedInstant::from_millis(10_000)),
             },
             Gate {
                 active: false,
                 last_activation_time: None,
+                last_beacon_time: None,
             },
             Gate {
                 active: false,
                 last_activation_time: None,
+                last_beacon_time: None,
             },
             Gate {
                 active: false,
                 last_activation_time: None,
+                last_beacon_time: None,
             },
         ]));
         assert_debug_snapshot!(race);
@@ -82,36 +86,44 @@ mod tests {
             Gate {
                 active: true,
                 last_activation_time: Some(CoordinatedInstant::from_millis(10_000)),
+                last_beacon_time: Some(CoordinatedInstant::from_millis(10_000)),
             },
             Gate {
                 active: false,
                 last_activation_time: None,
+                last_beacon_time: None,
             },
             Gate {
                 active: false,
                 last_activation_time: None,
+                last_beacon_time: None,
             },
             Gate {
                 active: false,
                 last_activation_time: None,
+                last_beacon_time: None,
             },
         ]));
         race.set_gates(&Gates::new([
             Gate {
                 active: false,
                 last_activation_time: Some(CoordinatedInstant::from_millis(10_000)),
+                last_beacon_time: Some(CoordinatedInstant::from_millis(10_000)),
             },
             Gate {
                 active: false,
                 last_activation_time: None,
+                last_beacon_time: None,
             },
             Gate {
                 active: false,
                 last_activation_time: None,
+                last_beacon_time: None,
             },
             Gate {
                 active: true,
                 last_activation_time: Some(CoordinatedInstant::from_millis(20_000)),
+                last_beacon_time: Some(CoordinatedInstant::from_millis(20_000)),
             },
         ]));
         assert_debug_snapshot!(race);
@@ -124,54 +136,66 @@ mod tests {
             Gate {
                 active: true,
                 last_activation_time: Some(CoordinatedInstant::from_millis(10_000)),
+                last_beacon_time: Some(CoordinatedInstant::from_millis(10_000)),
             },
             Gate {
                 active: false,
                 last_activation_time: None,
+                last_beacon_time: None,
             },
             Gate {
                 active: false,
                 last_activation_time: None,
+                last_beacon_time: None,
             },
             Gate {
                 active: false,
                 last_activation_time: None,
+                last_beacon_time: None,
             },
         ]));
         race.set_gates(&Gates::new([
             Gate {
                 active: false,
                 last_activation_time: Some(CoordinatedInstant::from_millis(10_000)),
+                last_beacon_time: Some(CoordinatedInstant::from_millis(10_000)),
             },
             Gate {
                 active: false,
                 last_activation_time: None,
+                last_beacon_time: None,
             },
             Gate {
                 active: false,
                 last_activation_time: None,
+                last_beacon_time: None,
             },
             Gate {
                 active: true,
                 last_activation_time: Some(CoordinatedInstant::from_millis(20_000)),
+                last_beacon_time: Some(CoordinatedInstant::from_millis(20_000)),
             },
         ]));
         race.set_gates(&Gates::new([
             Gate {
                 active: false,
                 last_activation_time: Some(CoordinatedInstant::from_millis(30_000)),
+                last_beacon_time: Some(CoordinatedInstant::from_millis(30_000)),
             },
             Gate {
                 active: false,
                 last_activation_time: None,
+                last_beacon_time: None,
             },
             Gate {
                 active: false,
                 last_activation_time: None,
+                last_beacon_time: None,
             },
             Gate {
                 active: true,
                 last_activation_time: Some(CoordinatedInstant::from_millis(20_000)),
+                last_beacon_time: Some(CoordinatedInstant::from_millis(20_000)),
             },
         ]));
         assert_debug_snapshot!(race);
