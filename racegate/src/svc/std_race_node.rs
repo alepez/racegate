@@ -1,5 +1,5 @@
 use std::net::{SocketAddr, UdpSocket};
-use std::ops::DerefMut;
+use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
@@ -194,7 +194,9 @@ impl RaceNode for StdRaceNode {
     }
 
     fn coordinator_time(&self) -> Option<CoordinatedInstant> {
-        self.state.0.lock().ok()?.coordinator_time.into_option()
+        self.state
+            .read(|x| x.coordinator_time.into_option())
+            .flatten()
     }
 
     fn publish(&self, msg: RaceNodeMessage) -> anyhow::Result<()> {
@@ -228,6 +230,13 @@ impl SharedNodeState {
     {
         // Ignore errors
         self.0.try_lock().map(|mut x| f(x.deref_mut())).ok();
+    }
+
+    fn read<F, T>(&self, f: F) -> Option<T>
+    where
+        F: FnOnce(&NodesState) -> T,
+    {
+        self.0.lock().map(|x| f(x.deref())).ok()
     }
 }
 
