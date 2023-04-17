@@ -1,10 +1,12 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use esp_idf_sys as _;
-
 use racegate::app::App;
 use racegate::hal::wifi::WifiConfig;
+
 use racegate_esp_idf::platform::{BoardType, Config, PlatformImpl};
+
+const TASK_WAKEUP_PERIOD: Duration = Duration::from_millis(20);
 
 fn main() -> anyhow::Result<()> {
     esp_idf_sys::link_patches();
@@ -24,11 +26,22 @@ fn main() -> anyhow::Result<()> {
     log::info!("Create app");
     let mut app = App::new(&mut p);
 
-    let period = Duration::from_millis(10);
-
     log::info!("Start loop");
+
     loop {
-        std::thread::sleep(period);
-        app.update();
+        let next_wakeup = Instant::now() + TASK_WAKEUP_PERIOD;
+
+        {
+            let start = Instant::now();
+            app.update();
+
+            log::info!("app update took {}ms", (Instant::now() - start).as_millis());
+        }
+
+        if let Some(delay) = next_wakeup.checked_duration_since(Instant::now()) {
+            std::thread::sleep(delay);
+        } else {
+            log::error!("no delay");
+        }
     }
 }
