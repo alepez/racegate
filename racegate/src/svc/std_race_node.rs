@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
-use std::thread::JoinHandle;
+use std::thread::{sleep, JoinHandle};
 use std::time::{Duration, Instant};
 
 use anyhow::anyhow;
@@ -110,12 +110,20 @@ fn spawn_thread(
 ) -> (JoinHandle<Stats>, mpsc::Sender<RaceNodeMessage>) {
     let (tx_sender, tx_receiver) = mpsc::channel::<RaceNodeMessage>();
 
+    const TASK_WAKEUP_PERIOD: Duration = Duration::from_millis(100);
+
     let thread = std::thread::Builder::new()
         .stack_size(64 * 1024)
         .spawn(move || {
             let mut stats = Stats::default();
 
             loop {
+                let start = Instant::now();
+
+                // log::info!("node update");
+
+                let next_wakeup = Instant::now() + TASK_WAKEUP_PERIOD;
+
                 for tx_msg in tx_receiver.try_iter() {
                     if sender
                         .send_to(tx_msg.data().as_bytes(), broadcast_addr)
@@ -125,6 +133,7 @@ fn spawn_thread(
                     }
                 }
 
+                // receive_message should lock for the timeout set to the udp socket
                 while let Ok(rx_msg) = receive_message(&mut receiver) {
                     log::debug!("{:?}", rx_msg);
                     stats.rx_count += 1;
@@ -144,6 +153,18 @@ fn spawn_thread(
 
                 if !continue_running.load(Ordering::Acquire) {
                     break;
+                }
+
+                log::trace!(
+                    "node update took {}ms",
+                    (Instant::now() - start).as_millis()
+                );
+
+                // Ensure this task is not spinning
+                if let Some(delay) = next_wakeup.checked_duration_since(Instant::now()) {
+                    sleep(delay);
+                } else {
+                    log::error!("no delay");
                 }
             }
             stats
