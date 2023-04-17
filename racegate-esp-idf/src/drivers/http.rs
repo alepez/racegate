@@ -37,13 +37,22 @@ impl StateSenders {
         let json = serde_json::to_vec(&system_state).unwrap();
         let data = json.as_slice();
 
-        if let Ok(mut senders) = self.0.lock() {
+        // try_lock is used because we want to avoid waiting for the lock to be
+        // acquired and we accept to miss some transmission.
+        if let Ok(mut senders) = self.0.try_lock() {
+            let mut err_count = 0;
+
             // FIXME Clean up closed
             let senders: &mut VecDeque<StateSender> = &mut senders;
+
             for sender in senders.iter_mut().filter(|x| !x.ws.is_closed()) {
                 if sender.ws.send(frame_type, data).is_err() {
-                    log::error!("error sending gate status");
+                    err_count += 1;
                 }
+            }
+
+            if err_count > 0 {
+                log::error!("error sending gate status");
             }
         }
     }
