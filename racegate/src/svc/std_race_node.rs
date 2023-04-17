@@ -204,7 +204,7 @@ impl RaceNode for StdRaceNode {
     }
 
     fn gates(&self) -> Gates {
-        self.state.0.lock().ok().unwrap().gates.to_owned()
+        self.state.read(|x| x.gates.to_owned()).unwrap()
     }
 }
 
