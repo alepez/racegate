@@ -35,7 +35,7 @@ fn main() -> anyhow::Result<()> {
             let start = Instant::now();
             app.update();
 
-            log::info!("app update took {}ms", (Instant::now() - start).as_millis());
+            log::trace!("app update took {}ms", (Instant::now() - start).as_millis());
         }
 
         if let Some(delay) = next_wakeup.checked_duration_since(Instant::now()) {
