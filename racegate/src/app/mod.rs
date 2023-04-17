@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant};
+
 use crate::app::gates::Gates;
 use crate::app::race::Race;
 use crate::hal::button::ButtonState;
@@ -129,19 +131,17 @@ impl InitState {
         let address = address(services);
 
         let startup_as_gate = address.is_gate()
-            && is_wifi_connected
             && (button_state != ButtonState::Pressed)
-            && gate_state != GateState::Active;
+            && (gate_state != GateState::Active);
 
         /* Coordinator is selected by dip switch */
         let startup_as_coordinator = address.is_coordinator()
-            && is_wifi_connected
             && (button_state != ButtonState::Pressed)
-            && gate_state != GateState::Active;
+            && (gate_state != GateState::Active);
 
         if startup_as_gate {
             log::info!("This is a gate");
-            AppState::GateStartup(GateStartupState)
+            AppState::GateStartup(GateStartupState::default())
         } else if startup_as_coordinator {
             log::info!("This is a coordinator");
             // On coordinator, local time is the coordinated time, without any offset
@@ -209,13 +209,31 @@ impl CoordinatorReadyState {
     }
 }
 
-#[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
-struct GateStartupState;
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+struct GateStartupState {
+    time_started: Instant,
+}
+
+impl Default for GateStartupState {
+    fn default() -> Self {
+        Self {
+            time_started: Instant::now(),
+        }
+    }
+}
 
 impl GateStartupState {
     pub fn update(&mut self, services: &Services) -> AppState {
         let is_wifi_connected = services.platform.wifi().is_up();
         let gate_state = services.platform.gate().state();
+
+        if let Some(time_since_started) = Instant::now().checked_duration_since(self.time_started) {
+            // Apparently, there's no way to recover the connection. Just panic and hope.
+            const TIMEOUT: Duration = Duration::from_secs(10);
+            if time_since_started > TIMEOUT {
+                panic!();
+            }
+        }
 
         if let Some(coordinated_clock) = make_coordinated_clock(services) {
             let clock_offset = coordinated_clock.offset();
@@ -226,7 +244,7 @@ impl GateStartupState {
                 last_activation_time: None,
             })
         } else {
-            AppState::GateStartup(GateStartupState)
+            AppState::GateStartup(*self)
         }
     }
 }
@@ -246,7 +264,7 @@ impl GateReadyState {
 
         let Some(coordinated_clock) = make_coordinated_clock(services) else {
             log::warn!("Unreliable coordinated clock");
-            return AppState::GateStartup(GateStartupState);
+            return AppState::GateStartup(GateStartupState::default());
         };
 
         let coordinated_time = coordinated_clock.now();
