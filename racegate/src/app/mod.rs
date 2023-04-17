@@ -144,10 +144,7 @@ impl InitState {
 
         if startup_as_gate {
             log::info!("This is a gate");
-            AppState::GateStartup(GateStartupState {
-                is_wifi_connected,
-                time: local_time,
-            })
+            AppState::GateStartup(GateStartupState { is_wifi_connected })
         } else if startup_as_coordinator {
             log::info!("This is a coordinator");
             // On coordinator, local time is the coordinated time, without any offset
@@ -214,37 +211,34 @@ impl CoordinatorReadyState {
 #[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
 struct GateStartupState {
     is_wifi_connected: bool,
-    time: LocalInstant,
+}
+
+fn make_coordinated_clock<'a>(services: &'a Services) -> Option<CoordinatedClock<'a>> {
+    let time = services.local_clock.now()?;
+
+    services
+        .platform
+        .race_node()
+        .coordinator_time()
+        .map(|coord_time| calculate_clock_offset(coord_time, time))
+        .map(|clock_offset| CoordinatedClock::new(&services.local_clock, clock_offset))
 }
 
 impl GateStartupState {
     pub fn update(&mut self, services: &Services) -> AppState {
         let is_wifi_connected = services.platform.wifi().is_up();
-        let time = services.local_clock.now().expect("Cannot get time");
         let gate_state = services.platform.gate().state();
 
-        let clock_offset = services
-            .platform
-            .race_node()
-            .coordinator_time()
-            .map(|coord_time| calculate_clock_offset(coord_time, time));
-
-        if let Some(clock_offset) = clock_offset {
-            log::info!("Gate is ready, offset: {}ms", clock_offset.as_millis());
-            let clock = CoordinatedClock::new(&services.local_clock, clock_offset);
-            let coordinated_time = clock.now();
+        if let Some(coordinated_clock) = make_coordinated_clock(services) {
+            let clock_offset = coordinated_clock.offset();
             AppState::GateReady(GateReadyState {
                 is_wifi_connected,
                 gate_state,
                 clock_offset,
-                coordinated_time,
                 last_activation_time: None,
             })
         } else {
-            AppState::GateStartup(GateStartupState {
-                is_wifi_connected,
-                time,
-            })
+            AppState::GateStartup(GateStartupState { is_wifi_connected })
         }
     }
 }
@@ -254,7 +248,6 @@ struct GateReadyState {
     is_wifi_connected: bool,
     gate_state: GateState,
     clock_offset: LocalOffset,
-    coordinated_time: CoordinatedInstant,
     last_activation_time: Option<CoordinatedInstant>,
 }
 
@@ -287,7 +280,6 @@ impl GateReadyState {
             is_wifi_connected,
             gate_state,
             clock_offset,
-            coordinated_time,
             last_activation_time,
         })
     }

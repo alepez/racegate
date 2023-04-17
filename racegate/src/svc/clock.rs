@@ -61,6 +61,7 @@ impl CoordinatedInstant {
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct CoordinatedClock<'a> {
     clock: &'a LocalClock,
     offset: LocalOffset,
@@ -74,6 +75,10 @@ impl<'a> CoordinatedClock<'a> {
     pub fn now(&self) -> CoordinatedInstant {
         let t = self.clock.now().expect("Cannot get time");
         CoordinatedInstant::from_millis(t.as_millis() + self.offset.as_millis())
+    }
+
+    pub fn offset(&self) -> LocalOffset {
+        self.offset
     }
 }
 
