@@ -120,6 +120,8 @@ fn spawn_send_task(state_senders: StateSenders, state: Arc<Mutex<SystemState>>) 
     std::thread::Builder::new()
         .stack_size(64 * 1024)
         .spawn(move || loop {
+            let start = Instant::now();
+
             let next_wakeup = Instant::now() + TASK_WAKEUP_PERIOD;
 
             state_senders.cleanup_closed();
@@ -129,6 +131,8 @@ fn spawn_send_task(state_senders: StateSenders, state: Arc<Mutex<SystemState>>) 
             if let Ok(state) = state.try_lock().map(|x| x.clone()) {
                 state_senders.send(&state);
             }
+
+            log::trace!("ws update took {}ms", (Instant::now() - start).as_millis());
 
             // Ensure this task is not spinning
             if let Some(delay) = next_wakeup.checked_duration_since(Instant::now()) {
