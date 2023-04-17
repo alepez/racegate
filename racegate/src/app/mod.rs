@@ -144,7 +144,7 @@ impl InitState {
 
         if startup_as_gate {
             log::info!("This is a gate");
-            AppState::GateStartup(GateStartupState { is_wifi_connected })
+            AppState::GateStartup(GateStartupState)
         } else if startup_as_coordinator {
             log::info!("This is a coordinator");
             // On coordinator, local time is the coordinated time, without any offset
@@ -209,20 +209,7 @@ impl CoordinatorReadyState {
 }
 
 #[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
-struct GateStartupState {
-    is_wifi_connected: bool,
-}
-
-fn make_coordinated_clock<'a>(services: &'a Services) -> Option<CoordinatedClock<'a>> {
-    let time = services.local_clock.now()?;
-
-    services
-        .platform
-        .race_node()
-        .coordinator_time()
-        .map(|coord_time| calculate_clock_offset(coord_time, time))
-        .map(|clock_offset| CoordinatedClock::new(&services.local_clock, clock_offset))
-}
+struct GateStartupState;
 
 impl GateStartupState {
     pub fn update(&mut self, services: &Services) -> AppState {
@@ -238,7 +225,7 @@ impl GateStartupState {
                 last_activation_time: None,
             })
         } else {
-            AppState::GateStartup(GateStartupState { is_wifi_connected })
+            AppState::GateStartup(GateStartupState)
         }
     }
 }
@@ -255,9 +242,14 @@ impl GateReadyState {
     pub fn update(&mut self, services: &Services) -> AppState {
         let is_wifi_connected = services.platform.wifi().is_up();
         let gate_state = services.platform.gate().state();
-        let clock_offset = self.clock_offset;
-        let clock = CoordinatedClock::new(&services.local_clock, clock_offset);
-        let coordinated_time = clock.now();
+
+        let Some(coordinated_clock) = make_coordinated_clock(services) else {
+            return AppState::GateStartup(GateStartupState);
+        };
+
+        let coordinated_time = coordinated_clock.now();
+        let clock_offset = coordinated_clock.offset();
+
         let addr = address(services);
 
         let last_activation_time = if gate_state == GateState::Active {
@@ -294,4 +286,15 @@ fn address_from_env_var() -> Option<NodeAddress> {
         .parse::<u8>()
         .ok()
         .map(NodeAddress::from)
+}
+
+fn make_coordinated_clock<'a>(services: &'a Services) -> Option<CoordinatedClock<'a>> {
+    let time = services.local_clock.now()?;
+
+    services
+        .platform
+        .race_node()
+        .coordinator_time()
+        .map(|coord_time| calculate_clock_offset(coord_time, time))
+        .map(|clock_offset| CoordinatedClock::new(&services.local_clock, clock_offset))
 }
