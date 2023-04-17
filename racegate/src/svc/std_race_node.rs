@@ -1,7 +1,6 @@
 use std::net::{SocketAddr, UdpSocket};
 use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread::{sleep, JoinHandle};
 use std::time::{Duration, Instant};
@@ -26,7 +25,8 @@ pub struct StdRaceNode {
     thread: Option<JoinHandle<Stats>>,
     state: SharedNodeState,
     continue_running: Arc<AtomicBool>,
-    tx: mpsc::Sender<RaceNodeMessage>,
+    // Note: not using mpsc because it causes weird bugs (maybe esp-idf implementation is buggy)
+    tx: Arc<Mutex<Option<RaceNodeMessage>>>,
 }
 
 struct StdRaceNodeConfig {
@@ -107,10 +107,12 @@ fn spawn_thread(
     sender: UdpSocket,
     mut receiver: UdpSocket,
     continue_running: Arc<AtomicBool>,
-) -> (JoinHandle<Stats>, mpsc::Sender<RaceNodeMessage>) {
-    let (tx_sender, tx_receiver) = mpsc::channel::<RaceNodeMessage>();
+) -> (JoinHandle<Stats>, Arc<Mutex<Option<RaceNodeMessage>>>) {
+    const TASK_WAKEUP_PERIOD: Duration = Duration::from_millis(20);
 
-    const TASK_WAKEUP_PERIOD: Duration = Duration::from_millis(100);
+    let tx_message: Option<RaceNodeMessage> = None;
+    let tx = Arc::new(Mutex::new(tx_message));
+    let tx_copy = tx.clone();
 
     let thread = std::thread::Builder::new()
         .stack_size(64 * 1024)
@@ -124,7 +126,7 @@ fn spawn_thread(
 
                 let next_wakeup = Instant::now() + TASK_WAKEUP_PERIOD;
 
-                for tx_msg in tx_receiver.try_iter() {
+                if let Some(tx_msg) = tx_copy.try_lock().ok().and_then(|x| x.clone()) {
                     if sender
                         .send_to(tx_msg.data().as_bytes(), broadcast_addr)
                         .is_ok()
@@ -171,13 +173,17 @@ fn spawn_thread(
         })
         .unwrap();
 
-    (thread, tx_sender)
+    (thread, tx)
 }
 
 fn make_receiver(receiver_addr: SocketAddr) -> anyhow::Result<UdpSocket> {
     let receiver = UdpSocket::bind(receiver_addr)?;
     receiver.set_broadcast(true)?;
-    receiver.set_read_timeout(Some(Duration::from_millis(40)))?;
+
+    // This must be non blocking, otherwise the thread may be locked.
+    // It is not important that all messages are successfully sent.
+    receiver.set_nonblocking(true)?;
+
     log::info!("receiver {:?}", receiver.local_addr());
     Ok(receiver)
 }
@@ -185,6 +191,11 @@ fn make_receiver(receiver_addr: SocketAddr) -> anyhow::Result<UdpSocket> {
 fn make_sender(sender_addr: SocketAddr) -> anyhow::Result<UdpSocket> {
     let sender = UdpSocket::bind(sender_addr)?;
     sender.set_broadcast(true)?;
+
+    // This must be non blocking, otherwise the thread may be locked.
+    // It is not important that all messages are successfully sent.
+    sender.set_nonblocking(true)?;
+
     log::info!("sender {:?}", sender.local_addr());
     Ok(sender)
 }
@@ -229,7 +240,10 @@ impl RaceNode for StdRaceNode {
     }
 
     fn publish(&self, msg: RaceNodeMessage) -> anyhow::Result<()> {
-        self.tx.send(msg).map_err(|_| anyhow!("Cannot publish"))
+        self.tx
+            .try_lock()
+            .map(|mut x| *x = Some(msg))
+            .map_err(|_| anyhow!("Cannot publish"))
     }
 
     fn gates(&self) -> Gates {

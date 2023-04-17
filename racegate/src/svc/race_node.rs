@@ -102,7 +102,7 @@ pub struct CoordinatorBeacon {
     pub time: CoordinatedInstant,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum RaceNodeMessage {
     GateBeacon(GateBeacon),
     CoordinatorBeacon(CoordinatorBeacon),
