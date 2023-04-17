@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+flash() {
+  local platform="${1}"
+  local serial="${2}"
+  local address="${3}"
+
+  if [ "${address}" == "0" ]; then
+    RACEGATE_WIFI_CONFIG="true:racegate:racegate"
+  else
+    RACEGATE_WIFI_CONFIG="false:racegate:racegate"
+  fi
+
+  RACEGATE_NODE_ADDRESS="${address}"
+
+  export RACEGATE_NODE_ADDRESS
+  export RACEGATE_WIFI_CONFIG
+
+  echo "RACEGATE_NODE_ADDRESS=${RACEGATE_NODE_ADDRESS}"
+  echo "RACEGATE_WIFI_CONFIG=${RACEGATE_WIFI_CONFIG}"
+
+  cargo espflash \
+    --features="${platform}" \
+    --speed 1500000 \
+    --monitor "${serial}" \
+    --partition-table partitions/partitions_singleapp_4MB.csv
+}
+
+main() {
+  case $1 in
+  flash) flash "${2}" "${3}" "${4}";;
+  esac
+}
+
+main "$@"
