@@ -9,10 +9,10 @@
 <ul>
     <li>Time: <span id="state-time"></span></li>
     <li>Duration: <span id="state-duration"></span></li>
-    <li>Gate 0: <span id="state-gate-0"></span></li>
-    <li>Gate 1: <span id="state-gate-1"></span></li>
+    <li>Start: <span id="state-gate-1"></span></li>
     <li>Gate 2: <span id="state-gate-2"></span></li>
     <li>Gate 3: <span id="state-gate-3"></span></li>
+    <li>Finish: <span id="state-gate-4"></span></li>
 </ul>
 <script>
     var gateway = `ws://${window.location.hostname}/state`;
@@ -45,7 +45,7 @@
         var gatesIndexes = [ 0, 1, 2, 3];
 
         gatesIndexes.forEach((index) => {
-          var id = `state-gate-${index}`;
+          var id = `state-gate-${index + 1}`;
           var active = obj.gates.items[index].active;
           var lastActivationTime = obj.gates.items[index].last_activation_time;
           var lastBeaconTime = obj.gates.items[index].last_beacon_time;
