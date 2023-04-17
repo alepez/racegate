@@ -115,7 +115,6 @@ impl<'a> LedController<'a> {
 
 #[derive(Default, Copy, Clone, Eq, PartialEq, Debug)]
 struct InitState {
-    is_wifi_connected: bool,
     gate_state: GateState,
     button_state: ButtonState,
     time: LocalInstant,
@@ -149,7 +148,6 @@ impl InitState {
             log::info!("This is a coordinator");
             // On coordinator, local time is the coordinated time, without any offset
             AppState::CoordinatorReady(CoordinatorReadyState {
-                is_wifi_connected,
                 time: CoordinatedInstant::from_millis(local_time.as_millis()),
                 system_state: SystemState::default(),
                 any_gate_active: false,
@@ -162,7 +160,6 @@ impl InitState {
 
 #[derive(Default, Clone, Eq, PartialEq, Debug)]
 struct CoordinatorReadyState {
-    is_wifi_connected: bool,
     time: CoordinatedInstant,
     system_state: SystemState,
     any_gate_active: bool,
@@ -171,6 +168,13 @@ struct CoordinatorReadyState {
 impl CoordinatorReadyState {
     pub fn update(&self, services: &Services) -> AppState {
         let is_wifi_connected = services.platform.wifi().is_up();
+
+        if !is_wifi_connected {
+            // If coordinator looses connection, the system is not reliable and
+            // we must start again.
+            return AppState::Init(InitState::default());
+        }
+
         let local_time = services.local_clock.now().expect("Cannot get time");
 
         // On coordinator, local time is the coordinated time, without any offset
@@ -200,7 +204,6 @@ impl CoordinatorReadyState {
             .set_system_state(&self.system_state);
 
         AppState::CoordinatorReady(CoordinatorReadyState {
-            is_wifi_connected,
             time,
             system_state,
             any_gate_active,
