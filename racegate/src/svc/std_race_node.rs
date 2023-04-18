@@ -363,9 +363,9 @@ mod tests {
             broadcast_addr: "127.0.0.10:6698".parse().unwrap(),
         };
 
-        let node = StdRaceNode::new_with_config(cfg).unwrap();
+        
 
-        node
+        StdRaceNode::new_with_config(cfg).unwrap()
     }
 
     fn make_start_node() -> StdRaceNode {
@@ -377,9 +377,9 @@ mod tests {
             broadcast_addr: "127.0.0.10:6699".parse().unwrap(),
         };
 
-        let node = StdRaceNode::new_with_config(cfg).unwrap();
+        
 
-        node
+        StdRaceNode::new_with_config(cfg).unwrap()
     }
 
     #[ignore]
