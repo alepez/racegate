@@ -10,10 +10,10 @@ pub static SYSTEM_STATE: Atom<Option<SystemState>> = |_| None;
 
 #[allow(non_snake_case)]
 pub fn App(cx: Scope) -> Element {
-    use_init_atom_root(&cx);
-    let set_system_state = Rc::clone(use_set(&cx, SYSTEM_STATE));
+    use_init_atom_root(cx);
+    let set_system_state = Rc::clone(use_set(cx, SYSTEM_STATE));
 
-    use_ws_context_provider_json::<SystemState>(&cx, "ws://192.168.71.1:80/state", move |msg| {
+    use_ws_context_provider_json::<SystemState>(cx, "ws://192.168.71.1:80/state", move |msg| {
         set_system_state(Some(msg));
     });
 
@@ -25,7 +25,7 @@ pub fn App(cx: Scope) -> Element {
 
 #[allow(non_snake_case)]
 fn Main(cx: Scope) -> Element {
-    if let Some(system_state) = use_read(&cx, SYSTEM_STATE) {
+    if let Some(system_state) = use_read(cx, SYSTEM_STATE) {
         Dashboard(cx, system_state)
     } else {
         cx.render(rsx!(div { "loading..." }))
