@@ -10,7 +10,6 @@ use crate::hal::Platform;
 use crate::svc::race_node::*;
 use crate::svc::{
     calculate_clock_offset, CoordinatedClock, CoordinatedInstant, LocalClock, LocalInstant,
-    LocalOffset,
 };
 
 pub mod gates;
@@ -124,7 +123,6 @@ struct InitState {
 
 impl InitState {
     pub fn update(&mut self, services: &Services) -> AppState {
-        let is_wifi_connected = services.platform.wifi().is_up();
         let gate_state = services.platform.gate().state();
         let button_state = services.platform.button().state();
         let local_time = services.local_clock.now().expect("Cannot get time");
@@ -236,11 +234,10 @@ impl GateStartupState {
         }
 
         if let Some(coordinated_clock) = make_coordinated_clock(services) {
-            let clock_offset = coordinated_clock.offset();
             AppState::GateReady(GateReadyState {
                 is_wifi_connected,
                 gate_state,
-                clock_offset,
+                coordinated_clock,
                 last_activation_time: None,
             })
         } else {
@@ -253,7 +250,7 @@ impl GateStartupState {
 struct GateReadyState {
     is_wifi_connected: bool,
     gate_state: GateState,
-    clock_offset: LocalOffset,
+    coordinated_clock: CoordinatedClock,
     last_activation_time: Option<CoordinatedInstant>,
 }
 
@@ -262,13 +259,10 @@ impl GateReadyState {
         let is_wifi_connected = services.platform.wifi().is_up();
         let gate_state = services.platform.gate().state();
 
-        let Some(coordinated_clock) = make_coordinated_clock(services) else {
-            log::warn!("Unreliable coordinated clock");
-            return AppState::GateStartup(GateStartupState::default());
-        };
-
+        let coordinated_clock = make_coordinated_clock(services).unwrap_or(self.coordinated_clock);
         let coordinated_time = coordinated_clock.now();
-        let clock_offset = coordinated_clock.offset();
+
+        log::info!("coordinated_time: {}", coordinated_time.as_millis());
 
         let addr = address(services);
 
@@ -291,7 +285,7 @@ impl GateReadyState {
         AppState::GateReady(GateReadyState {
             is_wifi_connected,
             gate_state,
-            clock_offset,
+            coordinated_clock,
             last_activation_time,
         })
     }
@@ -308,7 +302,7 @@ fn address_from_env_var() -> Option<NodeAddress> {
         .map(NodeAddress::from)
 }
 
-fn make_coordinated_clock<'a>(services: &'a Services) -> Option<CoordinatedClock<'a>> {
+fn make_coordinated_clock(services: &Services) -> Option<CoordinatedClock> {
     let time = services.local_clock.now()?;
 
     services
@@ -316,5 +310,5 @@ fn make_coordinated_clock<'a>(services: &'a Services) -> Option<CoordinatedClock
         .race_node()
         .coordinator_time()
         .map(|coord_time| calculate_clock_offset(coord_time, time))
-        .map(|clock_offset| CoordinatedClock::new(&services.local_clock, clock_offset))
+        .map(|clock_offset| CoordinatedClock::new(services.local_clock, clock_offset))
 }

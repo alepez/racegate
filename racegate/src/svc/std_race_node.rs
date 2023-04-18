@@ -12,7 +12,9 @@ use crate::hal::gate::GateState;
 use crate::svc::race_node::{FrameData, GateBeacon, RaceNode, RaceNodeMessage};
 use crate::svc::CoordinatedInstant;
 
-const COORDINATOR_BEACON_TIMEOUT: Duration = Duration::from_secs(10);
+// This must be very strict (less than the acceptable error) because the application must switch
+// to clock dead reckoning.
+const COORDINATOR_BEACON_TIMEOUT: Duration = Duration::from_millis(50);
 
 #[derive(Default, Debug)]
 struct Stats {

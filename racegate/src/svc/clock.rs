@@ -11,6 +11,7 @@ impl LocalInstant {
     }
 }
 
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct LocalClock {
     start: std::time::Instant,
 }
@@ -61,14 +62,14 @@ impl CoordinatedInstant {
     }
 }
 
-#[derive(Copy, Clone)]
-pub struct CoordinatedClock<'a> {
-    clock: &'a LocalClock,
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub struct CoordinatedClock {
+    clock: LocalClock,
     offset: LocalOffset,
 }
 
-impl<'a> CoordinatedClock<'a> {
-    pub fn new(clock: &'a LocalClock, offset: LocalOffset) -> Self {
+impl CoordinatedClock {
+    pub fn new(clock: LocalClock, offset: LocalOffset) -> Self {
         Self { clock, offset }
     }
 
