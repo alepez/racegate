@@ -22,6 +22,12 @@ pub struct SystemState {
     race: Race,
 }
 
+impl SystemState {
+    pub fn race(&self) -> &Race {
+        &self.race
+    }
+}
+
 struct Services<'a> {
     led_controller: LedController<'a>,
     platform: &'a dyn Platform,

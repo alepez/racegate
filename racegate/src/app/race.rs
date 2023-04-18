@@ -43,6 +43,10 @@ impl Race {
             }
         }
     }
+
+    pub fn duration(&self) -> Option<Duration> {
+        self.duration
+    }
 }
 
 #[cfg(test)]
