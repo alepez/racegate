@@ -71,10 +71,10 @@ fn GateComponent(cx: Scope, name: String, gate: Gate, time: CoordinatedInstant) 
 
     cx.render(rsx!(
         div {
-            span { 
+            span {
                 display: "inline-block",
                 width: "4em",
-                "{name}" 
+                "{name}"
             }
             span {
                 display: "inline-block",
