@@ -150,7 +150,8 @@ fn spawn_thread(
                             x.coordinator_time = ExpOpt::<CoordinatedInstant>::new_with_duration(
                                 beacon.time,
                                 COORDINATOR_BEACON_TIMEOUT,
-                            )
+                            );
+                            x.coordinator_beacon_time = Some(Instant::now());
                         }),
                     }
                 }
@@ -251,11 +252,20 @@ impl RaceNode for StdRaceNode {
     fn gates(&self) -> Gates {
         self.state.read(|x| x.gates.to_owned()).unwrap()
     }
+
+    fn time_since_coordinator_beacon(&self) -> Duration {
+        self.state
+            .read(|x| x.coordinator_beacon_time)
+            .flatten()
+            .and_then(|instant| Instant::now().checked_duration_since(instant))
+            .unwrap_or(Duration::MAX)
+    }
 }
 
 #[derive(Default)]
 struct NodesState {
     coordinator_time: ExpOpt<CoordinatedInstant>,
+    coordinator_beacon_time: Option<Instant>,
     gates: Gates,
 }
 

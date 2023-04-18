@@ -1,6 +1,7 @@
 use crate::app::gates::Gates;
 use crate::hal::gate::GateState;
 use crate::svc::CoordinatedInstant;
+use std::time::Duration;
 
 #[derive(Debug)]
 pub enum Error {
@@ -15,6 +16,8 @@ pub trait RaceNode {
     fn publish(&self, msg: RaceNodeMessage) -> anyhow::Result<()>;
 
     fn gates(&self) -> Gates;
+
+    fn time_since_coordinator_beacon(&self) -> Duration;
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]

@@ -262,7 +262,17 @@ impl GateReadyState {
         let coordinated_clock = make_coordinated_clock(services).unwrap_or(self.coordinated_clock);
         let coordinated_time = coordinated_clock.now();
 
-        log::info!("coordinated_time: {}", coordinated_time.as_millis());
+        if services
+            .platform
+            .race_node()
+            .time_since_coordinator_beacon()
+            > Duration::from_secs(10)
+        {
+            // No beacon from coordinator, maybe due to a disconnection
+            return AppState::GateStartup(GateStartupState::default());
+        }
+
+        log::trace!("coordinated_time: {}", coordinated_time.as_millis());
 
         let addr = address(services);
 
