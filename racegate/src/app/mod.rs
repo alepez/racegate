@@ -279,10 +279,9 @@ impl GateReadyState {
 
         // Button is useful for testing. So we assume a button pressed event
         // like a gate active event.
-        let gate_or_button =
-            (gate_state == GateState::Active) || (button_state == ButtonState::Pressed);
+        let gate_state = gate_state_or_button(gate_state, button_state);
 
-        let last_activation_time = if gate_or_button {
+        let last_activation_time = if gate_state == GateState::Active {
             Some(coordinated_time)
         } else {
             self.last_activation_time
@@ -327,4 +326,12 @@ fn make_coordinated_clock(services: &Services) -> Option<CoordinatedClock> {
         .coordinator_time()
         .map(|coord_time| calculate_clock_offset(coord_time, time))
         .map(|clock_offset| CoordinatedClock::new(services.local_clock, clock_offset))
+}
+
+fn gate_state_or_button(gate: GateState, button: ButtonState) -> GateState {
+    if gate == GateState::Active || button == ButtonState::Pressed {
+        GateState::Active
+    } else {
+        GateState::Inactive
+    }
 }
