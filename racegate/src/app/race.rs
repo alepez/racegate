@@ -15,20 +15,28 @@ impl Race {
         let start_time = gates.start_gate().last_activation_time;
         let finish_time = gates.finish_gate().last_activation_time;
 
+        // Always override start time if it is defined
         if let Some(start_time) = start_time {
             self.start_time = Some(start_time);
         }
 
-        if let Some(finish_time) = finish_time {
-            self.finish_time = Some(finish_time);
+        // Override finish time only if it is not already defined
+        if self.finish_time.is_none() {
+            if let Some(finish_time) = finish_time {
+                self.finish_time = Some(finish_time);
+            }
         }
 
         if let Some(start_time) = start_time {
-            if let Some(finish_time) = finish_time {
+            if let Some(finish_time) = self.finish_time {
                 if start_time > finish_time {
+                    // When start gate is activated after finish gate, it means
+                    // we have a new race, so we must reset.
                     self.finish_time = None;
                     self.duration = None;
                 } else {
+                    // When finish gate is activated after start gate, it means
+                    // the race has just ended and we can calculate the duration.
                     let duration_millis = finish_time.as_millis() - start_time.as_millis();
                     self.duration = Some(Duration::from_millis(duration_millis as u64));
                 }
@@ -54,7 +62,16 @@ mod tests {
         }
     }
 
-    fn make_inactive_gate() -> Gate {
+    fn make_inactive_gate(time_ms: i32) -> Gate {
+        let t = Some(CoordinatedInstant::from_millis(time_ms));
+        Gate {
+            active: false,
+            last_activation_time: t,
+            last_beacon_time: t,
+        }
+    }
+
+    fn make_never_activated_gate() -> Gate {
         Gate {
             active: false,
             last_activation_time: None,
@@ -73,9 +90,9 @@ mod tests {
         let mut race = Race::default();
         race.set_gates(&Gates::new([
             make_active_gate(10_000),
-            make_inactive_gate(),
-            make_inactive_gate(),
-            make_inactive_gate(),
+            make_never_activated_gate(),
+            make_never_activated_gate(),
+            make_never_activated_gate(),
         ]));
         assert_debug_snapshot!(race);
     }
@@ -85,14 +102,14 @@ mod tests {
         let mut race = Race::default();
         race.set_gates(&Gates::new([
             make_active_gate(10_000),
-            make_inactive_gate(),
-            make_inactive_gate(),
-            make_inactive_gate(),
+            make_never_activated_gate(),
+            make_never_activated_gate(),
+            make_never_activated_gate(),
         ]));
         race.set_gates(&Gates::new([
             make_active_gate(10_000),
-            make_inactive_gate(),
-            make_inactive_gate(),
+            make_never_activated_gate(),
+            make_never_activated_gate(),
             make_active_gate(20_000),
         ]));
         assert_debug_snapshot!(race);
@@ -103,22 +120,51 @@ mod tests {
         let mut race = Race::default();
         race.set_gates(&Gates::new([
             make_active_gate(10_000),
-            make_inactive_gate(),
-            make_inactive_gate(),
-            make_inactive_gate(),
+            make_never_activated_gate(),
+            make_never_activated_gate(),
+            make_never_activated_gate(),
         ]));
         race.set_gates(&Gates::new([
             make_active_gate(10_000),
-            make_inactive_gate(),
-            make_inactive_gate(),
+            make_never_activated_gate(),
+            make_never_activated_gate(),
             make_active_gate(20_000),
         ]));
         race.set_gates(&Gates::new([
             make_active_gate(30_000),
-            make_inactive_gate(),
-            make_inactive_gate(),
+            make_never_activated_gate(),
+            make_never_activated_gate(),
             make_active_gate(20_000),
         ]));
+        assert_debug_snapshot!(race);
+    }
+
+    #[test]
+    fn test_race_with_two_finish_activations() {
+        let mut race = Race::default();
+        race.set_gates(&Gates::new([
+            make_active_gate(10_000),
+            make_never_activated_gate(),
+            make_never_activated_gate(),
+            make_never_activated_gate(),
+        ]));
+        race.set_gates(&Gates::new([
+            make_inactive_gate(10_000),
+            make_never_activated_gate(),
+            make_never_activated_gate(),
+            make_active_gate(20_000),
+        ]));
+        race.set_gates(&Gates::new([
+            make_inactive_gate(10_000),
+            make_never_activated_gate(),
+            make_never_activated_gate(),
+            make_active_gate(30_000),
+        ]));
+
+        // Even if the finish gate has been activated again, the duration is
+        // calculated start gate activation and first finish gate activation.
+        assert_eq!(race.duration, Some(Duration::from_secs(10)));
+
         assert_debug_snapshot!(race);
     }
 }
