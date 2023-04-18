@@ -89,28 +89,37 @@ struct LedController<'a> {
 
 impl<'a> LedController<'a> {
     pub fn update(&mut self, app_state: &AppState) {
-        let color = match app_state {
-            AppState::Init(_) => 0xFF0000,
-            AppState::CoordinatorReady(state) => {
-                if state.any_gate_active {
-                    0x00FFFF
-                } else {
-                    0xFFFFFF
-                }
-            }
-            AppState::GateStartup(_) => 0xFFFF00,
-            AppState::GateReady(state) => {
-                if state.gate_state == GateState::Active {
-                    0x008080
-                } else if state.is_wifi_connected {
-                    0x008000
-                } else {
-                    0x800000
-                }
-            }
-        };
-
+        let color = color_from_app_state(app_state);
         self.led.set_color(RgbLedColor::from(color));
+    }
+}
+
+fn color_from_app_state(app_state: &AppState) -> u32 {
+    const RED: u32 = 0xFF0000;
+    const YELLOW: u32 = 0xFFFF00;
+    const GREEN: u32 = 0x00FF00;
+    const LIGHT_BLUE: u32 = 0x00FFFF;
+    const WHITE: u32 = 0xFFFFFF;
+
+    match app_state {
+        AppState::Init(_) => RED,
+        AppState::GateStartup(_) => YELLOW,
+        AppState::CoordinatorReady(state) => {
+            if state.any_gate_active {
+                LIGHT_BLUE
+            } else {
+                WHITE
+            }
+        }
+        AppState::GateReady(state) => {
+            if state.gate_state == GateState::Active {
+                LIGHT_BLUE
+            } else if state.is_wifi_connected {
+                GREEN
+            } else {
+                RED
+            }
+        }
     }
 }
 
