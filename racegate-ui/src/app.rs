@@ -3,7 +3,6 @@ use std::{rc::Rc, time::Duration};
 use dioxus::prelude::*;
 use dioxus_websocket_hooks::use_ws_context_provider_json;
 use fermi::{use_init_atom_root, use_read, use_set, Atom};
-use gloo_console::log;
 use racegate::app::{gates::Gate, SystemState};
 use racegate::CoordinatedInstant;
 
@@ -14,7 +13,7 @@ pub fn App(cx: Scope) -> Element {
     use_init_atom_root(&cx);
     let set_system_state = Rc::clone(use_set(&cx, SYSTEM_STATE));
 
-    use_ws_context_provider_json::<SystemState>(&cx, "ws://192.168.1.207:80/state", move |msg| {
+    use_ws_context_provider_json::<SystemState>(&cx, "ws://192.168.71.1:80/state", move |msg| {
         set_system_state(Some(msg));
     });
 
