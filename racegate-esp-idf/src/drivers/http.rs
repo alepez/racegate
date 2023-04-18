@@ -89,6 +89,35 @@ fn add_handlers(server: &mut EspHttpServer) -> anyhow::Result<StateSenders> {
         Ok(())
     })?;
 
+    server.fn_handler("/racegate-ui.js", Method::Get, |request| {
+        let headers = [("Content-Type", "application/javascript")];
+        let mut response = request.into_response(200, None, &headers)?;
+        response.write_all(ui_js())?;
+        Ok(())
+    })?;
+
+    server.fn_handler("/racegate-ui_bg.wasm", Method::Get, |request| {
+        let headers = [
+            ("Content-Type", "application/wasm"),
+            ("Content-Encoding", "gzip"),
+        ];
+        let mut response = request.into_response(200, None, &headers)?;
+        response.write_all(ui_wasm())?;
+        Ok(())
+    })?;
+
+    // TODO this file name may change
+    server.fn_handler(
+        "/snippets/dioxus-interpreter-js-1676574062e4c953/inline0.js",
+        Method::Get,
+        |request| {
+            let headers = [("Content-Type", "application/javascript")];
+            let mut response = request.into_response(200, None, &headers)?;
+            response.write_all(dioxus_interpreter())?;
+            Ok(())
+        },
+    )?;
+
     server.ws_handler("/test", |conn| -> Result<(), EspError> {
         let frame_type = FrameType::Binary(false);
         let data = "test".as_bytes();
@@ -176,5 +205,20 @@ impl racegate::svc::HttpServer for HttpServer {
 }
 
 fn index_html() -> &'static [u8] {
-    include_bytes!("../../../racegate-ui/assets/index.html")
+    include_bytes!("../../../racegate-ui/dist/index.html")
+}
+
+fn ui_js() -> &'static [u8] {
+    include_bytes!("../../../racegate-ui/dist/racegate-ui.js")
+}
+
+fn ui_wasm() -> &'static [u8] {
+    include_bytes!("../../../racegate-ui/dist/racegate-ui_bg.wasm.gz")
+}
+
+fn dioxus_interpreter() -> &'static [u8] {
+    // TODO this file name may change
+    include_bytes!(
+        "../../../racegate-ui/dist/snippets/dioxus-interpreter-js-1676574062e4c953/inline0.js"
+    )
 }
