@@ -1373,6 +1373,7 @@ dependencies = [
  "racegate",
  "serde",
  "serde_json",
+ "web-sys",
 ]
 
 [[package]]

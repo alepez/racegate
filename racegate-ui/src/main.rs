@@ -1,7 +1,5 @@
 #![allow(non_snake_case)]
 
-
-
 mod app;
 
 use app::*;

@@ -13,7 +13,9 @@ pub fn App(cx: Scope) -> Element {
     use_init_atom_root(cx);
     let set_system_state = Rc::clone(use_set(cx, SYSTEM_STATE));
 
-    use_ws_context_provider_json::<SystemState>(cx, "ws://192.168.71.1:80/state", move |msg| {
+    let ws_url = ws_url_from_hostname();
+
+    use_ws_context_provider_json::<SystemState>(cx, &ws_url, move |msg| {
         set_system_state(Some(msg));
     });
 
@@ -88,4 +90,15 @@ fn GateComponent(cx: Scope, name: String, gate: Gate, time: CoordinatedInstant) 
             }
         }
     ))
+}
+
+fn hostname() -> Option<String> {
+    let window = web_sys::window()?;
+    Some(window.location().hostname().ok()?.to_string())
+}
+
+fn ws_url_from_hostname() -> String {
+    const DEFAULT_HOSTNAME: &'static str = "192.168.1.71.1";
+    let h = hostname().unwrap_or_else(|| DEFAULT_HOSTNAME.to_owned());
+    format!("ws://{h}/state")
 }
