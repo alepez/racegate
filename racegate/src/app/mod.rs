@@ -98,7 +98,7 @@ fn color_from_app_state(app_state: &AppState) -> u32 {
     const RED: u32 = 0xFF0000;
     const YELLOW: u32 = 0xFFFF00;
     const GREEN: u32 = 0x00FF00;
-    const LIGHT_BLUE: u32 = 0x00FFFF;
+    const BLUE: u32 = 0x0000FF;
     const WHITE: u32 = 0xFFFFFF;
 
     match app_state {
@@ -106,18 +106,16 @@ fn color_from_app_state(app_state: &AppState) -> u32 {
         AppState::GateStartup(_) => YELLOW,
         AppState::CoordinatorReady(state) => {
             if state.any_gate_active {
-                LIGHT_BLUE
+                BLUE
             } else {
                 WHITE
             }
         }
         AppState::GateReady(state) => {
             if state.gate_state == GateState::Active {
-                LIGHT_BLUE
-            } else if state.is_wifi_connected {
-                GREEN
+                BLUE
             } else {
-                RED
+                GREEN
             }
         }
     }
@@ -244,7 +242,6 @@ impl GateStartupState {
 
         if let Some(coordinated_clock) = make_coordinated_clock(services) {
             AppState::GateReady(GateReadyState {
-                is_wifi_connected,
                 gate_state,
                 coordinated_clock,
                 last_activation_time: None,
@@ -257,7 +254,6 @@ impl GateStartupState {
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 struct GateReadyState {
-    is_wifi_connected: bool,
     gate_state: GateState,
     coordinated_clock: CoordinatedClock,
     last_activation_time: Option<CoordinatedInstant>,
@@ -307,7 +303,6 @@ impl GateReadyState {
         }
 
         AppState::GateReady(GateReadyState {
-            is_wifi_connected,
             gate_state,
             coordinated_clock,
             last_activation_time,
