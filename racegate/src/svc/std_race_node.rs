@@ -363,8 +363,6 @@ mod tests {
             broadcast_addr: "127.0.0.10:6698".parse().unwrap(),
         };
 
-        
-
         StdRaceNode::new_with_config(cfg).unwrap()
     }
 
@@ -376,8 +374,6 @@ mod tests {
             receiver_addr: "127.0.0.10:6698".parse().unwrap(),
             broadcast_addr: "127.0.0.10:6699".parse().unwrap(),
         };
-
-        
 
         StdRaceNode::new_with_config(cfg).unwrap()
     }
