@@ -258,6 +258,7 @@ impl GateReadyState {
     pub fn update(&mut self, services: &Services) -> AppState {
         let is_wifi_connected = services.platform.wifi().is_up();
         let gate_state = services.platform.gate().state();
+        let button_state = services.platform.button().state();
 
         let coordinated_clock = make_coordinated_clock(services).unwrap_or(self.coordinated_clock);
         let coordinated_time = coordinated_clock.now();
@@ -276,7 +277,12 @@ impl GateReadyState {
 
         let addr = address(services);
 
-        let last_activation_time = if gate_state == GateState::Active {
+        // Button is useful for testing. So we assume a button pressed event
+        // like a gate active event.
+        let gate_or_button =
+            (gate_state == GateState::Active) || (button_state == ButtonState::Pressed);
+
+        let last_activation_time = if gate_or_button {
             Some(coordinated_time)
         } else {
             self.last_activation_time
