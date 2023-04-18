@@ -45,6 +45,23 @@ mod tests {
 
     use super::*;
 
+    fn make_active_gate(time_ms: i32) -> Gate {
+        let t = Some(CoordinatedInstant::from_millis(time_ms));
+        Gate {
+            active: true,
+            last_activation_time: t,
+            last_beacon_time: t,
+        }
+    }
+
+    fn make_inactive_gate() -> Gate {
+        Gate {
+            active: false,
+            last_activation_time: None,
+            last_beacon_time: None,
+        }
+    }
+
     #[test]
     fn test_race_default() {
         let race = Race::default();
@@ -55,26 +72,10 @@ mod tests {
     fn test_race_with_start_gate_active() {
         let mut race = Race::default();
         race.set_gates(&Gates::new([
-            Gate {
-                active: true,
-                last_activation_time: Some(CoordinatedInstant::from_millis(10_000)),
-                last_beacon_time: Some(CoordinatedInstant::from_millis(10_000)),
-            },
-            Gate {
-                active: false,
-                last_activation_time: None,
-                last_beacon_time: None,
-            },
-            Gate {
-                active: false,
-                last_activation_time: None,
-                last_beacon_time: None,
-            },
-            Gate {
-                active: false,
-                last_activation_time: None,
-                last_beacon_time: None,
-            },
+            make_active_gate(10_000),
+            make_inactive_gate(),
+            make_inactive_gate(),
+            make_inactive_gate(),
         ]));
         assert_debug_snapshot!(race);
     }
@@ -83,48 +84,16 @@ mod tests {
     fn test_race_with_start_and_finish_gates_active() {
         let mut race = Race::default();
         race.set_gates(&Gates::new([
-            Gate {
-                active: true,
-                last_activation_time: Some(CoordinatedInstant::from_millis(10_000)),
-                last_beacon_time: Some(CoordinatedInstant::from_millis(10_000)),
-            },
-            Gate {
-                active: false,
-                last_activation_time: None,
-                last_beacon_time: None,
-            },
-            Gate {
-                active: false,
-                last_activation_time: None,
-                last_beacon_time: None,
-            },
-            Gate {
-                active: false,
-                last_activation_time: None,
-                last_beacon_time: None,
-            },
+            make_active_gate(10_000),
+            make_inactive_gate(),
+            make_inactive_gate(),
+            make_inactive_gate(),
         ]));
         race.set_gates(&Gates::new([
-            Gate {
-                active: false,
-                last_activation_time: Some(CoordinatedInstant::from_millis(10_000)),
-                last_beacon_time: Some(CoordinatedInstant::from_millis(10_000)),
-            },
-            Gate {
-                active: false,
-                last_activation_time: None,
-                last_beacon_time: None,
-            },
-            Gate {
-                active: false,
-                last_activation_time: None,
-                last_beacon_time: None,
-            },
-            Gate {
-                active: true,
-                last_activation_time: Some(CoordinatedInstant::from_millis(20_000)),
-                last_beacon_time: Some(CoordinatedInstant::from_millis(20_000)),
-            },
+            make_active_gate(10_000),
+            make_inactive_gate(),
+            make_inactive_gate(),
+            make_active_gate(20_000),
         ]));
         assert_debug_snapshot!(race);
     }
@@ -133,70 +102,22 @@ mod tests {
     fn test_race_with_start_after_finish() {
         let mut race = Race::default();
         race.set_gates(&Gates::new([
-            Gate {
-                active: true,
-                last_activation_time: Some(CoordinatedInstant::from_millis(10_000)),
-                last_beacon_time: Some(CoordinatedInstant::from_millis(10_000)),
-            },
-            Gate {
-                active: false,
-                last_activation_time: None,
-                last_beacon_time: None,
-            },
-            Gate {
-                active: false,
-                last_activation_time: None,
-                last_beacon_time: None,
-            },
-            Gate {
-                active: false,
-                last_activation_time: None,
-                last_beacon_time: None,
-            },
+            make_active_gate(10_000),
+            make_inactive_gate(),
+            make_inactive_gate(),
+            make_inactive_gate(),
         ]));
         race.set_gates(&Gates::new([
-            Gate {
-                active: false,
-                last_activation_time: Some(CoordinatedInstant::from_millis(10_000)),
-                last_beacon_time: Some(CoordinatedInstant::from_millis(10_000)),
-            },
-            Gate {
-                active: false,
-                last_activation_time: None,
-                last_beacon_time: None,
-            },
-            Gate {
-                active: false,
-                last_activation_time: None,
-                last_beacon_time: None,
-            },
-            Gate {
-                active: true,
-                last_activation_time: Some(CoordinatedInstant::from_millis(20_000)),
-                last_beacon_time: Some(CoordinatedInstant::from_millis(20_000)),
-            },
+            make_active_gate(10_000),
+            make_inactive_gate(),
+            make_inactive_gate(),
+            make_active_gate(20_000),
         ]));
         race.set_gates(&Gates::new([
-            Gate {
-                active: false,
-                last_activation_time: Some(CoordinatedInstant::from_millis(30_000)),
-                last_beacon_time: Some(CoordinatedInstant::from_millis(30_000)),
-            },
-            Gate {
-                active: false,
-                last_activation_time: None,
-                last_beacon_time: None,
-            },
-            Gate {
-                active: false,
-                last_activation_time: None,
-                last_beacon_time: None,
-            },
-            Gate {
-                active: true,
-                last_activation_time: Some(CoordinatedInstant::from_millis(20_000)),
-                last_beacon_time: Some(CoordinatedInstant::from_millis(20_000)),
-            },
+            make_active_gate(30_000),
+            make_inactive_gate(),
+            make_inactive_gate(),
+            make_active_gate(20_000),
         ]));
         assert_debug_snapshot!(race);
     }
