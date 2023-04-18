@@ -229,7 +229,6 @@ impl Default for GateStartupState {
 
 impl GateStartupState {
     pub fn update(&mut self, services: &Services) -> AppState {
-        let is_wifi_connected = services.platform.wifi().is_up();
         let gate_state = services.platform.gate().state();
 
         if let Some(time_since_started) = Instant::now().checked_duration_since(self.time_started) {
@@ -261,7 +260,6 @@ struct GateReadyState {
 
 impl GateReadyState {
     pub fn update(&mut self, services: &Services) -> AppState {
-        let is_wifi_connected = services.platform.wifi().is_up();
         let gate_state = services.platform.gate().state();
         let button_state = services.platform.button().state();
 
