@@ -335,7 +335,7 @@ impl<T> ExpOpt<T> {
         };
 
         if expired {
-            log::info!(
+            log::trace!(
                 "Expired {}ms ago",
                 now.duration_since(self.expiration.unwrap()).as_millis()
             );
