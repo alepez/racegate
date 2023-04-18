@@ -5,10 +5,18 @@ flash() {
   local serial="${2}"
   local address="${3}"
 
-  if [ "${address}" == "0" ]; then
-    RACEGATE_WIFI_CONFIG="true:racegate:racegate"
-  else
-    RACEGATE_WIFI_CONFIG="false:racegate:racegate"
+  local wifi_default_pass="racegate"
+  local wifi_default_ssid="racegate"
+
+  if [ -z "${RACEGATE_WIFI_CONFIG}" ]; then
+    # Unless wifi configuration is overridden by env var
+    local wifi_ap_enabled="false"
+    if [ "${address}" == "0" ]; then
+      # Enable AP
+      wifi_ap_enabled="true"
+    fi
+
+    RACEGATE_WIFI_CONFIG="${wifi_ap_enabled}:${wifi_default_ssid}:${wifi_default_pass}"
   fi
 
   RACEGATE_NODE_ADDRESS="${address}"

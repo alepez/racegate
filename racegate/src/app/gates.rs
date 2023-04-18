@@ -8,6 +8,21 @@ pub struct Gate {
     pub last_beacon_time: Option<CoordinatedInstant>,
 }
 
+impl Gate {
+    pub fn is_alive(&self, now: CoordinatedInstant) -> bool {
+        self.last_beacon_time
+            .map(|x| {
+                let diff = now.as_millis() - x.as_millis();
+                diff < 1_000
+            })
+            .unwrap_or(false)
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.active
+    }
+}
+
 #[derive(Debug, serde::Serialize, serde::Deserialize, Default, Clone, Eq, PartialEq)]
 pub struct Gates {
     items: [Gate; 4],

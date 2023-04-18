@@ -26,6 +26,14 @@ impl SystemState {
     pub fn race(&self) -> &Race {
         &self.race
     }
+
+    pub fn gates(&self) -> &Gates {
+        &self.gates
+    }
+
+    pub fn time(&self) -> CoordinatedInstant {
+        self.time
+    }
 }
 
 struct Services<'a> {
