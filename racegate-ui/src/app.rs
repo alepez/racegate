@@ -28,33 +28,43 @@ pub fn App(cx: Scope) -> Element {
 #[allow(non_snake_case)]
 fn Main(cx: Scope) -> Element {
     if let Some(system_state) = use_read(cx, SYSTEM_STATE) {
-        Dashboard(cx, system_state)
+        cx.render(rsx!(Dashboard {
+            system_state: system_state
+        }))
     } else {
         cx.render(rsx!(div { "loading..." }))
     }
 }
 
 #[allow(non_snake_case)]
-fn Dashboard<'a>(cx: Scope<'a>, system_state: &'a SystemState) -> Element<'a> {
+#[inline_props]
+pub fn Dashboard<'a>(cx: Scope<'a>, system_state: &'a SystemState) -> Element<'a> {
     let duration = system_state.race().duration();
 
     let start_gate = system_state.gates().start_gate().clone();
     let finish_gate = system_state.gates().finish_gate().clone();
 
-    let duration = DurationComponent(cx, duration);
-    let start_gate = GateComponent(cx, "Start".to_owned(), start_gate, system_state.time());
-    let finish_gate = GateComponent(cx, "Finish".to_owned(), finish_gate, system_state.time());
-
     cx.render(rsx!(
         h2 { "dashboard" },
-        duration,
-        start_gate,
-        finish_gate
+        DurationComponent {
+            duration: duration,
+        },
+        GateComponent {
+            name: "Start".to_owned(),
+            gate: start_gate,
+            time: system_state.time()
+        },
+        GateComponent {
+            name: "Finish".to_owned(),
+            gate: finish_gate,
+            time: system_state.time()
+        },
     ))
 }
 
 #[allow(non_snake_case)]
-fn DurationComponent(cx: Scope, duration: Option<Duration>) -> Element {
+#[inline_props]
+fn DurationComponent(cx: Scope, #[props(!optional)] duration: Option<Duration>) -> Element {
     let duration_text = duration
         .map(format_duration)
         .unwrap_or_else(|| "-".to_owned());
@@ -67,8 +77,9 @@ fn format_duration(duration: Duration) -> String {
 }
 
 #[allow(non_snake_case)]
+#[inline_props]
 fn GateComponent(cx: Scope, name: String, gate: Gate, time: CoordinatedInstant) -> Element {
-    let alive = gate.is_alive(time);
+    let alive = gate.is_alive(*time);
     let active = gate.is_active();
 
     cx.render(rsx!(
@@ -93,8 +104,15 @@ fn GateComponent(cx: Scope, name: String, gate: Gate, time: CoordinatedInstant) 
 }
 
 fn hostname() -> Option<String> {
-    let window = web_sys::window()?;
-    Some(window.location().hostname().ok()?.to_string())
+    #[cfg(target_family = "wasm")]
+    {
+        let window = web_sys::window()?;
+        Some(window.location().hostname().ok()?.to_string())
+    }
+    #[cfg(not(target_family = "wasm"))]
+    {
+        None
+    }
 }
 
 fn ws_url_from_hostname() -> String {
