@@ -45,7 +45,6 @@ pub fn Dashboard<'a>(cx: Scope<'a>, system_state: &'a SystemState) -> Element<'a
     let finish_gate = system_state.gates().finish_gate().clone();
 
     cx.render(rsx!(
-        h2 { "dashboard" },
         DurationComponent {
             duration: duration,
         },
