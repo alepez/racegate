@@ -29,7 +29,7 @@ pub fn App(cx: Scope) -> Element {
 fn Main(cx: Scope) -> Element {
     if let Some(system_state) = use_read(cx, SYSTEM_STATE) {
         cx.render(rsx!(Dashboard {
-            system_state: system_state
+            system_state: system_state.clone()
         }))
     } else {
         cx.render(rsx!(div { "loading..." }))
@@ -38,7 +38,7 @@ fn Main(cx: Scope) -> Element {
 
 #[allow(non_snake_case)]
 #[inline_props]
-pub fn Dashboard<'a>(cx: Scope<'a>, system_state: &'a SystemState) -> Element<'a> {
+pub fn Dashboard(cx: Scope<'a>, system_state: SystemState) -> Element {
     let duration = system_state.race().duration();
 
     let start_gate = system_state.gates().start_gate().clone();
