@@ -78,6 +78,16 @@ fn format_duration(duration: Duration) -> String {
     format!("{:.2}", duration.as_secs_f64())
 }
 
+fn time_since_gate_activation(gate: &Gate, time: &CoordinatedInstant) -> String {
+    let Some(t) = gate.last_activation_time else {
+        return "-".to_owned();
+    };
+
+    let diff = Duration::from_millis((time.as_millis() - t.as_millis()) as u64);
+
+    format_duration(diff)
+}
+
 #[allow(non_snake_case)]
 #[inline_props]
 fn GateComponent(cx: Scope, name: String, gate: Gate, time: CoordinatedInstant) -> Element {
@@ -92,12 +102,18 @@ fn GateComponent(cx: Scope, name: String, gate: Gate, time: CoordinatedInstant) 
         "gate-inactive"
     };
 
+    let time = time_since_gate_activation(&gate, &time);
+
     cx.render(rsx!(
         div {
             class: "gate",
             span {
                 class: "gate-name",
                 "{name}"
+            }
+            span {
+                class: "gate-time",
+                "{time}",
             }
             span {
                 class: alive_class,
