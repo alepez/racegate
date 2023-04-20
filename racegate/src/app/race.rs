@@ -5,9 +5,9 @@ use crate::svc::CoordinatedInstant;
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Race {
-    start_time: Option<CoordinatedInstant>,
-    finish_time: Option<CoordinatedInstant>,
-    duration: Option<Duration>,
+    pub start_time: Option<CoordinatedInstant>,
+    pub finish_time: Option<CoordinatedInstant>,
+    pub duration: Option<Duration>,
 }
 
 impl Race {

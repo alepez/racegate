@@ -1,7 +1,9 @@
 use std::time::{Duration, Instant};
 
-use crate::app::gates::Gates;
-use crate::app::race::Race;
+pub use crate::app::gates::Gate;
+pub use crate::app::gates::Gates;
+pub use crate::app::race::Race;
+
 use crate::hal::button::ButtonState;
 use crate::hal::gate::GateState;
 use crate::hal::rgb_led::RgbLed;
@@ -17,23 +19,9 @@ mod race;
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SystemState {
-    time: CoordinatedInstant,
-    gates: Gates,
-    race: Race,
-}
-
-impl SystemState {
-    pub fn race(&self) -> &Race {
-        &self.race
-    }
-
-    pub fn gates(&self) -> &Gates {
-        &self.gates
-    }
-
-    pub fn time(&self) -> CoordinatedInstant {
-        self.time
-    }
+    pub time: CoordinatedInstant,
+    pub gates: Gates,
+    pub race: Race,
 }
 
 struct Services<'a> {

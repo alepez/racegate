@@ -39,10 +39,10 @@ fn Main(cx: Scope) -> Element {
 #[allow(non_snake_case)]
 #[inline_props]
 pub fn Dashboard(cx: Scope<'a>, system_state: SystemState) -> Element {
-    let duration = system_state.race().duration();
+    let duration = system_state.race.duration();
 
-    let start_gate = system_state.gates().start_gate().clone();
-    let finish_gate = system_state.gates().finish_gate().clone();
+    let start_gate = system_state.gates.start_gate().clone();
+    let finish_gate = system_state.gates.finish_gate().clone();
 
     cx.render(rsx!(
         DurationComponent {
@@ -51,12 +51,12 @@ pub fn Dashboard(cx: Scope<'a>, system_state: SystemState) -> Element {
         GateComponent {
             name: "Start".to_owned(),
             gate: start_gate,
-            time: system_state.time()
+            time: system_state.time
         },
         GateComponent {
             name: "Finish".to_owned(),
             gate: finish_gate,
-            time: system_state.time()
+            time: system_state.time
         },
     ))
 }
