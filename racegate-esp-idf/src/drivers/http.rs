@@ -89,6 +89,13 @@ fn add_handlers(server: &mut EspHttpServer) -> anyhow::Result<StateSenders> {
         Ok(())
     })?;
 
+    server.fn_handler("/style.css", Method::Get, |request| {
+        let headers = [("Content-Type", "text/css")];
+        let mut response = request.into_response(200, None, &headers)?;
+        response.write_all(ui_css())?;
+        Ok(())
+    })?;
+
     server.fn_handler("/racegate-ui.js", Method::Get, |request| {
         let headers = [("Content-Type", "application/javascript")];
         let mut response = request.into_response(200, None, &headers)?;
@@ -221,4 +228,8 @@ fn dioxus_interpreter() -> &'static [u8] {
     include_bytes!(
         "../../../racegate-ui/dist/snippets/dioxus-interpreter-js-1676574062e4c953/inline0.js"
     )
+}
+
+fn ui_css() -> &'static [u8] {
+    include_bytes!("../../../racegate-ui/dist/style.css")
 }
