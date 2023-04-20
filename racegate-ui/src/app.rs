@@ -96,7 +96,7 @@ fn GateComponent(cx: Scope, name: String, gate: Gate, time: CoordinatedInstant) 
 
     let alive_class = if alive { "gate-alive" } else { "gate-dead" };
 
-    let active_class = if alive {
+    let active_class = if active {
         "gate-active"
     } else {
         "gate-inactive"

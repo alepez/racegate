@@ -39,7 +39,7 @@ fn test_race_finished() -> SystemState {
             Gate {
                 active: false,
                 last_activation_time: Some(CoordinatedInstant::from_millis(1000)),
-                last_beacon_time: Some(CoordinatedInstant::from_millis(0)),
+                last_beacon_time: Some(CoordinatedInstant::from_millis(5000)),
             },
             Gate::default(),
             Gate::default(),
@@ -57,13 +57,42 @@ fn test_race_finished() -> SystemState {
     }
 }
 
+fn test_gate_dead() -> SystemState {
+    SystemState {
+        time: CoordinatedInstant::from_millis(5000),
+        gates: Gates::new([
+            Gate {
+                active: false,
+                last_activation_time: Some(CoordinatedInstant::from_millis(1000)),
+                last_beacon_time: Some(CoordinatedInstant::from_millis(0)),
+            },
+            Gate::default(),
+            Gate::default(),
+            Gate {
+                active: true,
+                last_activation_time: Some(CoordinatedInstant::from_millis(3456)),
+                last_beacon_time: Some(CoordinatedInstant::from_millis(0)),
+            },
+        ]),
+        race: Race {
+            start_time: None,
+            finish_time: None,
+            duration: Some(Duration::from_millis(2456)),
+        },
+    }
+}
+
 fn custom_head() -> String {
     r#"<link rel="stylesheet" href="assets/style.css" />"#.to_owned()
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let table: Vec<fn() -> SystemState> =
-        vec![test_default, test_start_gate_active, test_race_finished];
+    let table: Vec<fn() -> SystemState> = vec![
+        test_default,
+        test_start_gate_active,
+        test_race_finished,
+        test_gate_dead,
+    ];
 
     let args: Vec<_> = std::env::args().collect();
     let test_id = args.get(1).map(|x| x.parse().unwrap()).unwrap_or(0);
