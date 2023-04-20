@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use dioxus_desktop::Config;
+use dioxus_desktop::Config as DesktopConfig;
 use racegate::app::{Gate, Gates, Race, SystemState};
 use racegate::svc::CoordinatedInstant;
 use racegate_ui::app::{Dashboard, DashboardProps};
@@ -37,9 +37,9 @@ fn test_race_finished() -> SystemState {
         time: CoordinatedInstant::from_millis(5000),
         gates: Gates::new([
             Gate {
-                active: true,
+                active: false,
                 last_activation_time: Some(CoordinatedInstant::from_millis(1000)),
-                last_beacon_time: Some(CoordinatedInstant::from_millis(5000)),
+                last_beacon_time: Some(CoordinatedInstant::from_millis(0)),
             },
             Gate::default(),
             Gate::default(),
@@ -57,14 +57,21 @@ fn test_race_finished() -> SystemState {
     }
 }
 
+fn custom_head() -> String {
+    r#"<link rel="stylesheet" href="assets/style.css" />"#.to_owned()
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let table: Vec<fn() -> SystemState> =
         vec![test_default, test_start_gate_active, test_race_finished];
+
     let args: Vec<_> = std::env::args().collect();
     let test_id = args.get(1).map(|x| x.parse().unwrap()).unwrap_or(0);
     let test = table.get(test_id).expect("Invalid test id");
     let system_state = test();
-    let config = Config::default();
+
+    let config = DesktopConfig::new().with_custom_head(custom_head());
+
     let props = DashboardProps { system_state };
     dioxus_desktop::launch_with_props(Dashboard, props, config);
     Ok(())

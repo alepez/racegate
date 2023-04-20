@@ -45,9 +45,7 @@ pub fn Dashboard(cx: Scope<'a>, system_state: SystemState) -> Element {
     let finish_gate = system_state.gates.finish_gate().clone();
 
     cx.render(rsx!(
-        DurationComponent {
-            duration: duration,
-        },
+        DurationComponent { duration: duration },
         GateComponent {
             name: "Start".to_owned(),
             gate: start_gate,
@@ -68,7 +66,12 @@ fn DurationComponent(cx: Scope, #[props(!optional)] duration: Option<Duration>) 
         .map(format_duration)
         .unwrap_or_else(|| "-".to_owned());
 
-    cx.render(rsx!(span { duration_text }))
+    cx.render(rsx!(
+        div {
+            class: "duration",
+            span { duration_text }
+        }
+    ))
 }
 
 fn format_duration(duration: Duration) -> String {
@@ -81,21 +84,27 @@ fn GateComponent(cx: Scope, name: String, gate: Gate, time: CoordinatedInstant) 
     let alive = gate.is_alive(*time);
     let active = gate.is_active();
 
+    let alive_class = if alive { "gate-alive" } else { "gate-dead" };
+
+    let active_class = if alive {
+        "gate-active"
+    } else {
+        "gate-inactive"
+    };
+
     cx.render(rsx!(
         div {
+            class: "gate",
             span {
-                display: "inline-block",
-                width: "4em",
+                class: "gate-name",
                 "{name}"
             }
             span {
-                display: "inline-block",
-                margin_left: "1em",
+                class: alive_class,
                 "{alive}",
             }
             span {
-                display: "inline-block",
-                margin_left: "1em",
+                class: active_class,
                 "{active}",
             }
         }

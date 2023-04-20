@@ -1,0 +1,52 @@
+body { 
+  background: #000000; 
+  color: #ffffff;
+  font-size: 10vw;
+}
+
+.duration {
+  background: #333333;
+  padding: 0.2em;
+  margin: 0.2em;
+  text-align: center;
+  font-size: 200%;
+}
+
+.gate {
+  display: block;
+}
+
+.gate .gate-name {
+  display: inline-block;
+  width: 4em;
+  margin: 0.2em;
+}
+
+.gate .gate-alive,
+.gate .gate-dead,
+.gate .gate-active,
+.gate .gate-inactive {
+  display: inline-block;
+  text-indent: -100vw;
+  white-space: nowrap;
+  width: 1em;
+  height: 1em;
+  margin-left: 0.2em;
+  border-radius: 0.5em;
+}
+
+.gate .gate-alive {
+  background: #00ff00;
+}
+
+.gate .gate-dead {
+  background: #ff0000;
+}
+
+.gate .gate-active {
+  background: #00ffff;
+}
+
+.gate .gate-inactive {
+  background: #333333;
+}
